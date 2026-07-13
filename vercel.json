@@ -1,0 +1,7 @@
+{
+  "crons": [
+    { "path": "/api/import-swelist", "schedule": "0 14 * * *" },
+    { "path": "/api/import-ats", "schedule": "15 14 * * *" },
+    { "path": "/api/reminders", "schedule": "30 14 * * *" }
+  ]
+}
