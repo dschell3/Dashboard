@@ -73,8 +73,11 @@ function parseDateIn(window: string): string | null {
     if (plausibleDeadline(iso)) return iso;
   }
 
-  // "March 1" with no year — assume the next occurrence.
-  m = window.match(/\b([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/i);
+  // "March 1" with no year — assume the next occurrence. The lookahead
+  // requires the day NOT be followed by a year: "December 31, 2099" is a
+  // dated (implausible, already-rejected) placeholder, and re-matching it
+  // here as yearless would fabricate "December 31 <next year>".
+  m = window.match(/\b([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?!,?\s+\d{4})/i);
   if (m) {
     const mo = MONTHS[m[1].slice(0, 4).toLowerCase()] ?? MONTHS[m[1].slice(0, 3).toLowerCase()];
     if (mo !== undefined) {
