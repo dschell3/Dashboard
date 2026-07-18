@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AUTH_COOKIE, gateToken, safeEqual } from "@/lib/gate";
+import { AUTH_COOKIE, SESSION_SECONDS, gateToken, issueToken, safeEqual } from "@/lib/gate";
 
 export async function POST(req: Request) {
   const password = process.env.APP_PASSWORD;
@@ -21,12 +21,12 @@ export async function POST(req: Request) {
   }
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(AUTH_COOKIE, b, {
+  res.cookies.set(AUTH_COOKIE, await issueToken(password), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: SESSION_SECONDS,
   });
   return res;
 }
