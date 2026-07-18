@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Square } from "lucide-react";
 import { Chip } from "@/components/ui";
+import { toast } from "@/components/Toaster";
 import { fmtDate, daysUntil } from "@/lib/format";
 
 export type TaskItem = {
@@ -17,11 +18,9 @@ export type TaskItem = {
 export default function TasksPanel({ tasks }: { tasks: TaskItem[] }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
 
   async function complete(id: string) {
     setBusyId(id);
-    setErr(null);
     try {
       const res = await fetch(`/api/requirements/${id}`, {
         method: "PATCH",
@@ -31,8 +30,7 @@ export default function TasksPanel({ tasks }: { tasks: TaskItem[] }) {
       if (!res.ok) throw new Error();
       router.refresh();
     } catch {
-      setErr("Could not complete the task — check your connection.");
-      setTimeout(() => setErr(null), 4000);
+      toast("Could not complete the task — check your connection.", "error");
     } finally {
       setBusyId(null);
     }
@@ -44,7 +42,6 @@ export default function TasksPanel({ tasks }: { tasks: TaskItem[] }) {
 
   return (
     <>
-      {err && <p className="py-1 text-sm text-red-600" role="alert">{err}</p>}
       {tasks.map((t, i) => {
         const overdue = t.due_at && daysUntil(t.due_at) < 0;
         return (

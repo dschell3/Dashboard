@@ -9,6 +9,7 @@ import {
 import type { Opportunity, Requirement } from "@/lib/types";
 import { windowInfo, statusLabel, safeUrl, fmtDate, daysUntil, sourceLabel } from "@/lib/format";
 import { Chip, Card } from "@/components/ui";
+import { toast } from "@/components/Toaster";
 
 const STATUSES = ["interested", "preparing", "applied", "interview", "offer", "rejected", "withdrawn", "closed"];
 const REQ_TYPES = ["resume", "cover_letter", "transcript", "essay", "references", "portfolio", "online_assessment", "other"];
@@ -23,8 +24,6 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [flash, setFlash] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
   const [f, setF] = useState({
     status: opp.status as string,
     priority: opp.priority || "",
@@ -38,12 +37,6 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
 
   const [reqForm, setReqForm] = useState({ label: "", type: "other", due_at: "" });
   const [reqBusy, setReqBusy] = useState(false);
-  const [reqErr, setReqErr] = useState<string | null>(null);
-
-  function reqFail(msg: string) {
-    setReqErr(msg);
-    setTimeout(() => setReqErr(null), 4000);
-  }
 
   const win = windowInfo(opp);
   const link = safeUrl(opp.source_url);
@@ -51,7 +44,6 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
 
   async function save() {
     setSaving(true);
-    setErr(null);
     try {
       const res = await fetch(`/api/opportunities/${opp.id}`, {
         method: "PATCH",
@@ -60,11 +52,10 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not save.");
-      setFlash("Saved");
-      setTimeout(() => setFlash(null), 2500);
+      toast("Saved", "success");
       router.refresh();
     } catch (e: any) {
-      setErr(e.message);
+      toast(e.message, "error");
     } finally {
       setSaving(false);
     }
@@ -72,21 +63,19 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
 
   async function scanDeadline() {
     setScanning(true);
-    setErr(null);
     try {
       const res = await fetch(`/api/opportunities/${opp.id}/scan`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Scan failed.");
       if (data.found) {
         set("deadline_at", data.found);
-        setFlash(`Deadline found: ${fmtDate(data.found)}`);
+        toast(`Deadline found: ${fmtDate(data.found)}`, "success");
         router.refresh();
       } else {
-        setFlash(data.reason || "No stated deadline found — likely rolling.");
+        toast(data.reason || "No stated deadline found — likely rolling.");
       }
-      setTimeout(() => setFlash(null), 5000);
     } catch (e: any) {
-      setErr(e.message);
+      toast(e.message, "error");
     } finally {
       setScanning(false);
     }
@@ -98,13 +87,13 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ is_complete: !r.is_complete }),
     }).catch(() => null);
-    if (!res?.ok) return reqFail("Could not update the task — check your connection.");
+    if (!res?.ok) return toast("Could not update the task — check your connection.", "error");
     router.refresh();
   }
 
   async function deleteReq(id: string) {
     const res = await fetch(`/api/requirements/${id}`, { method: "DELETE" }).catch(() => null);
-    if (!res?.ok) return reqFail("Could not delete the task — check your connection.");
+    if (!res?.ok) return toast("Could not delete the task — check your connection.", "error");
     router.refresh();
   }
 
@@ -121,7 +110,7 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
       setReqForm({ label: "", type: "other", due_at: "" });
       router.refresh();
     } catch {
-      reqFail("Could not add the task — check your connection.");
+      toast("Could not add the task — check your connection.", "error");
     } finally {
       setReqBusy(false);
     }
@@ -134,7 +123,7 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
       router.push("/opportunities");
       router.refresh();
     } else {
-      setErr("Could not delete — check your connection.");
+      toast("Could not delete — check your connection.", "error");
     }
   }
 
@@ -238,12 +227,10 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
               />
             </div>
           </div>
-          {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
           <div className="mt-3 flex items-center gap-2">
             <button onClick={save} disabled={saving} className="rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-800 disabled:opacity-60">
               {saving ? "Saving…" : "Save changes"}
             </button>
-            {flash && <span className="text-sm text-emerald-600">{flash}</span>}
           </div>
         </Card>
 
@@ -278,7 +265,6 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
 
       <Card>
         <h2 className="mb-2 text-base font-medium">Application checklist</h2>
-        {reqErr && <p className="mb-1 text-sm text-red-600" role="alert">{reqErr}</p>}
         {reqs.length === 0 && <p className="py-1 text-sm text-stone-500">Nothing yet. Add what this application needs — items show up in Tasks on the dashboard.</p>}
         {reqs.map((r, i) => {
           const overdue = r.due_at && !r.is_complete && daysUntil(r.due_at) < 0;

@@ -6,6 +6,7 @@ import { Search, ArrowUpDown, ChevronDown, Clock, RefreshCw, Calendar, Trash2, S
 import type { Opportunity, OppStatus } from "@/lib/types";
 import { windowInfo, statusLabel, safeUrl, sourceLabel } from "@/lib/format";
 import { Chip } from "@/components/ui";
+import { toast } from "@/components/Toaster";
 
 type SortKey = "fit" | "deadline" | "company";
 const STATUSES: OppStatus[] = ["interested", "preparing", "applied", "interview", "offer", "rejected", "withdrawn", "closed"];
@@ -32,7 +33,6 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
   const [elig, setElig] = useState(sp.get("elig") || "all");
   const [focusOnly, setFocusOnly] = useState(sp.get("focus") === "1");
   const [sort, setSort] = useState<SortKey>(rawSort === "deadline" || rawSort === "company" ? rawSort : "fit");
-  const [err, setErr] = useState<string | null>(null);
 
   // Optimistic edits live in local state; when the server sends fresh rows
   // (after an import or a save elsewhere), fold them back in.
@@ -80,8 +80,7 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     });
     if (!res.ok) {
       setOpps(prev);
-      setErr("Could not update status — check your connection.");
-      setTimeout(() => setErr(null), 4000);
+      toast("Could not update status — check your connection.", "error");
     } else {
       router.refresh();
     }
@@ -94,8 +93,7 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     const res = await fetch(`/api/opportunities/${id}`, { method: "DELETE" });
     if (!res.ok) {
       setOpps(prev);
-      setErr("Could not delete — check your connection.");
-      setTimeout(() => setErr(null), 4000);
+      toast("Could not delete — check your connection.", "error");
     } else {
       router.refresh();
     }
@@ -153,8 +151,6 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
           </select>
         </label>
       </div>
-
-      {err && <p className="mb-2 text-sm text-red-600">{err}</p>}
 
       <div className="overflow-x-auto rounded-xl border border-stone-200">
         <table className="w-full min-w-[720px] table-fixed border-collapse">
