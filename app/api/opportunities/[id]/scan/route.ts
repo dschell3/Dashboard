@@ -46,15 +46,40 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   let text = "";
   try {
     const ctrl = new AbortController();
+    // The timer stays armed through the BODY read, not just the headers —
+    // otherwise a slow-drip server can hold the function to maxDuration.
     const timer = setTimeout(() => ctrl.abort(), 9000);
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      cache: "no-store",
-      headers: { "User-Agent": "Mozilla/5.0 (internship-dashboard deadline scan)" },
-    });
-    clearTimeout(timer);
-    if (!res.ok) return NextResponse.json({ found: null, reason: `Page returned HTTP ${res.status}.` });
-    text = (await res.text()).slice(0, 500000);
+    try {
+      const res = await fetch(url, {
+        signal: ctrl.signal,
+        cache: "no-store",
+        // Don't follow redirects: the SSRF host check above only vetted the
+        // ORIGINAL host, and a 3xx could point it at localhost/private ranges.
+        redirect: "manual",
+        headers: { "User-Agent": "Mozilla/5.0 (internship-dashboard deadline scan)" },
+      });
+      if (res.status >= 300 && res.status < 400) {
+        return NextResponse.json({ found: null, reason: "Page redirected — open the posting and set the deadline by hand." });
+      }
+      if (!res.ok) return NextResponse.json({ found: null, reason: `Page returned HTTP ${res.status}.` });
+      // Stream with a hard cap so a huge response never buffers fully.
+      const reader = res.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        const MAX = 500000;
+        while (text.length < MAX) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          text += decoder.decode(value, { stream: true });
+        }
+        if (text.length >= MAX) {
+          text = text.slice(0, MAX);
+          reader.cancel().catch(() => {});
+        }
+      }
+    } finally {
+      clearTimeout(timer);
+    }
   } catch {
     return NextResponse.json({ found: null, reason: "Could not reach the page." });
   }
