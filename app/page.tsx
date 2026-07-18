@@ -159,15 +159,19 @@ function OppRow({ o, first }: { o: Opportunity; first: boolean }) {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Chip tone="blue">{o.fit_score ?? 0}</Chip>
-        {o.eligibility_flag === "review"
-          ? <Chip tone="warning"><AlertTriangle className="h-3 w-3" />Review</Chip>
-          : <Chip tone="success"><Check className="h-3 w-3" />Eligible</Chip>}
+        {/* On phones the row only has space for the two chips that drive
+            action (fit + window); eligibility reappears from sm up. */}
+        <span className="hidden sm:block">
+          {o.eligibility_flag === "review"
+            ? <Chip tone="warning"><AlertTriangle className="h-3 w-3" />Review</Chip>
+            : <Chip tone="success"><Check className="h-3 w-3" />Eligible</Chip>}
+        </span>
         {win.kind === "due"
           ? <Chip tone="warning"><Clock className="h-3 w-3" />{win.text}</Chip>
           : win.kind === "opens"
           ? <Chip tone="info"><Calendar className="h-3 w-3" />{win.text}</Chip>
           : <Chip tone="neutral"><RefreshCw className="h-3 w-3" />{win.text}</Chip>}
-        <ChevronRight className="h-4 w-4 text-stone-400" />
+        <ChevronRight className="hidden h-4 w-4 text-stone-400 sm:block" />
       </div>
     </Link>
   );

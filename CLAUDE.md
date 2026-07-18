@@ -44,11 +44,14 @@ flag eligibility, pull live postings automatically, and surface deadlines.
     and selection; ALL parsing stays server/app-side so installed bookmarklets
     never go stale. Prefills `/opportunities/new` via `?u=&t=&s=`.
 - **Non-clobber rule:** imports never overwrite `status`, manually set
-  `deadline_at`, or `is_rolling` (columns are omitted from upsert rows unless
-  the import has real data, e.g. a found deadline). Moving to `applied` stamps
-  `applied_at` once and never overwrites it. Known gap, accepted for now:
-  `work_mode`/`locations` ARE rewritten by imports, so a hand-edited work mode
-  on an imported role reverts on the next cron pull.
+  `deadline_at`, `is_rolling`, or (on existing rows) `work_mode` — columns are
+  omitted from upsert rows unless the import has real data, e.g. a found
+  deadline. Moving to `applied` stamps `applied_at` once and never overwrites
+  it. Upserts go through `upsertGrouped()` (`lib/db.ts`), which batches rows
+  by key signature: PostgREST bulk writes null-fill keys missing from some
+  rows, so mixed-shape batches would clobber the very columns being omitted.
+  `locations` is still rewritten by imports (feed location data is treated as
+  fresher).
 - **Deadline capture** (`lib/deadline.ts`): Workday structured `endDate` when
   present; trigger-phrase + nearest-date scan of posting text during ATS
   imports; on-demand "Scan posting" button (`/api/opportunities/[id]/scan`).
@@ -71,12 +74,14 @@ flag eligibility, pull live postings automatically, and surface deadlines.
 ## Security model — invariants (do not weaken)
 
 - **Single-user password gate**, not Supabase Auth — deliberate for a solo
-  tool. `middleware.ts` + `lib/gate.ts`: SHA-256 token cookie (httpOnly,
-  SameSite=Lax, Secure in prod, 30-day), constant-time comparisons, ~400ms
-  delay on failed login. **Fails closed in production** when `APP_PASSWORD`
-  is unset (dev stays open). Login preserves `?next=` but only same-origin
-  relative paths (no `//`, no `\` — open-redirect guard incl. backslash
-  normalization).
+  tool. `middleware.ts` + `lib/gate.ts`: the cookie is a **signed expiring
+  token** `<expiry-epoch>.<hmac>` keyed off `APP_PASSWORD` (httpOnly,
+  SameSite=Lax, Secure in prod, 30-day expiry enforced server-side on every
+  request), constant-time comparisons, ~400ms delay on failed login. Changing
+  `APP_PASSWORD` revokes all sessions. **Fails closed in production** when
+  `APP_PASSWORD` is unset (dev stays open). Login preserves `?next=` but only
+  same-origin relative paths (no `//`, no `\` — open-redirect guard incl.
+  backslash normalization). Token behavior pinned by `lib/gate.test.ts`.
 - **Keep Next.js patched.** The gate lives entirely in middleware, so
   middleware-bypass CVEs (e.g. CVE-2025-29927, fixed in 14.2.25) are
   auth-bypass severity for this app. Pinned to the latest 14.x patch; check
@@ -88,6 +93,11 @@ flag eligibility, pull live postings automatically, and surface deadlines.
   can do nothing. All queries go through the service-role key in server code
   only (`lib/db.ts`). Never import `lib/db.ts` into a client component; never
   reintroduce browser-side DB writes.
+- **Supabase fetches must stay `cache: "no-store"`** (`lib/db.ts` wraps the
+  client's fetch). Next.js caches GET responses in its Data Cache ACROSS
+  requests in production — `force-dynamic` does not opt fetch() out — and
+  without this wrapper pages render stale rows (a saved status change
+  visibly "reverted"; bug reproduced and fixed 2026-07). Do not remove.
 - **Cron model:** Vercel crons send `Authorization: Bearer $CRON_SECRET`.
   The middleware allows that bearer through for the three cron paths, but the
   GET handlers on `import-swelist`, `import-ats`, and (for the actual send)
@@ -98,7 +108,9 @@ flag eligibility, pull live postings automatically, and surface deadlines.
   inline scripts; the value is frame-ancestors/object-src/base-uri/form-action
   and connect-src 'self'), X-Frame-Options DENY, nosniff, HSTS,
   Referrer-Policy no-referrer (posting links must not learn the dashboard
-  URL), Permissions-Policy.
+  URL), Permissions-Policy. Dev (and only dev) adds `'unsafe-eval'` to
+  script-src — Next dev tooling needs it and hydration silently dies without
+  it; production must never get it.
 - **URLs:** every stored or rendered link passes `safeUrl()` (http/https only,
   auto-https for schemeless, `javascript:` dropped); external links use
   `rel="noopener noreferrer"`. Applies to feed data, ATS data, and user input.
@@ -113,11 +125,9 @@ flag eligibility, pull live postings automatically, and surface deadlines.
   the body read, response streamed with a hard 500KB cap. Known limitation:
   hostname-based guarding is not DNS-rebinding-proof — acceptable for a
   single-user tool; do not expose this pattern multi-tenant.
-- **Accepted risks (documented, revisit if the tool becomes shared):** the
-  auth cookie is a static hash of the password (valid until the password
-  changes; 30-day expiry is client-enforced only); login throttling is the
-  fixed 400ms delay (Vercel is stateless — an in-memory counter won't hold;
-  platform-level WAF rate rules are the upgrade path).
+- **Accepted risks (documented, revisit if the tool becomes shared):** login
+  throttling is the fixed 400ms delay (Vercel is stateless — an in-memory
+  counter won't hold; platform-level WAF rate rules are the upgrade path).
 
 ## Intentional decisions — do not "fix"
 
@@ -147,6 +157,8 @@ flag eligibility, pull live postings automatically, and surface deadlines.
 - Crons (UTC): swelist 14:00, ATS 14:15, reminders 14:30 (`vercel.json`).
 - Validation: `npm install`, `npx tsc --noEmit`, `npx next build` (placeholder
   env vars suffice for building), `npm test` (Vitest — unit tests for
-  `lib/scoring.ts`, `lib/deadline.ts`, `lib/capture.ts`).
+  `lib/scoring.ts`, `lib/deadline.ts`, `lib/capture.ts`, `lib/gate.ts`).
+- UI feedback goes through the shared `toast()` in `components/Toaster.tsx`
+  (mounted once in the root layout) — not transient inline text.
 - Git history was reset with a force-push (nested-folder cleanup); shallow
   history is expected. Windows checkout produces CRLF warnings — harmless.

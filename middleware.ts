@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { AUTH_COOKIE, gateToken, safeEqual } from "@/lib/gate";
+import { AUTH_COOKIE, verifyToken, safeEqual } from "@/lib/gate";
 
 // Single-user password gate. Every page and API route requires the auth cookie
-// (an HMAC-style hash of APP_PASSWORD). Scheduled jobs authenticate with
-// CRON_SECRET instead. Multi-user Supabase Auth + per-user RLS is the upgrade
-// path if this ever becomes shared.
+// (a signed token with an embedded expiry, keyed off APP_PASSWORD). Scheduled
+// jobs authenticate with CRON_SECRET instead. Multi-user Supabase Auth +
+// per-user RLS is the upgrade path if this ever becomes shared.
 
 const CRON_PATHS = ["/api/import-swelist", "/api/import-ats", "/api/reminders"];
 
@@ -35,8 +35,7 @@ export async function middleware(req: NextRequest) {
   }
 
   const cookie = req.cookies.get(AUTH_COOKIE)?.value || "";
-  const expected = await gateToken(password);
-  if (safeEqual(cookie, expected)) return NextResponse.next();
+  if (cookie && (await verifyToken(cookie, password))) return NextResponse.next();
 
   // API calls get a 401; pages get redirected to the login screen. The
   // destination rides along in ?next= so e.g. a bookmarklet capture that hits
