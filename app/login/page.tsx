@@ -14,9 +14,11 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const sp = useSearchParams();
-  // Only same-origin relative paths — "//evil.com" or absolute URLs are ignored.
+  // Only same-origin relative paths — "//evil.com" or absolute URLs are
+  // ignored. "\" is rejected too: browsers normalize "/\evil.com" to
+  // "//evil.com", which would make it protocol-relative.
   const rawNext = sp.get("next") || "";
-  const next = /^\/(?!\/)/.test(rawNext) ? rawNext : "/";
+  const next = /^\/(?![/\\])/.test(rawNext) && !rawNext.includes("\\") ? rawNext : "/";
   const [pw, setPw] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
