@@ -23,6 +23,9 @@ export async function POST(req: Request) {
     })
     .select("id")
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("requirement insert failed:", error.message);
+    return NextResponse.json({ error: "Could not add the task." }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, id: data.id });
 }

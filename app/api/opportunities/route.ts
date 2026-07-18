@@ -68,6 +68,9 @@ export async function POST(req: Request) {
     .select("id")
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("opportunities insert failed:", error.message);
+    return NextResponse.json({ error: "Could not save the opportunity." }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, id: data.id });
 }

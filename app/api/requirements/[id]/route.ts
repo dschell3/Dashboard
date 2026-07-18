@@ -18,7 +18,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const supabase = createServerClient();
   const { error } = await supabase.from("requirements").update(update).eq("id", params.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("requirement update failed:", error.message);
+    return NextResponse.json({ error: "Could not update the task." }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -26,6 +29,9 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (!UUID_RE.test(params.id)) return NextResponse.json({ error: "Bad id" }, { status: 400 });
   const supabase = createServerClient();
   const { error } = await supabase.from("requirements").delete().eq("id", params.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("requirement delete failed:", error.message);
+    return NextResponse.json({ error: "Could not delete the task." }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
