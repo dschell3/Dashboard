@@ -38,6 +38,12 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
 
   const [reqForm, setReqForm] = useState({ label: "", type: "other", due_at: "" });
   const [reqBusy, setReqBusy] = useState(false);
+  const [reqErr, setReqErr] = useState<string | null>(null);
+
+  function reqFail(msg: string) {
+    setReqErr(msg);
+    setTimeout(() => setReqErr(null), 4000);
+  }
 
   const win = windowInfo(opp);
   const link = safeUrl(opp.source_url);
@@ -87,38 +93,48 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
   }
 
   async function toggleReq(r: Requirement) {
-    await fetch(`/api/requirements/${r.id}`, {
+    const res = await fetch(`/api/requirements/${r.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ is_complete: !r.is_complete }),
-    });
+    }).catch(() => null);
+    if (!res?.ok) return reqFail("Could not update the task — check your connection.");
     router.refresh();
   }
 
   async function deleteReq(id: string) {
-    await fetch(`/api/requirements/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/requirements/${id}`, { method: "DELETE" }).catch(() => null);
+    if (!res?.ok) return reqFail("Could not delete the task — check your connection.");
     router.refresh();
   }
 
   async function addReq() {
     if (!reqForm.label.trim()) return;
     setReqBusy(true);
-    await fetch("/api/requirements", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ opportunity_id: opp.id, ...reqForm }),
-    });
-    setReqForm({ label: "", type: "other", due_at: "" });
-    setReqBusy(false);
-    router.refresh();
+    try {
+      const res = await fetch("/api/requirements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opportunity_id: opp.id, ...reqForm }),
+      });
+      if (!res.ok) throw new Error();
+      setReqForm({ label: "", type: "other", due_at: "" });
+      router.refresh();
+    } catch {
+      reqFail("Could not add the task — check your connection.");
+    } finally {
+      setReqBusy(false);
+    }
   }
 
   async function deleteOpp() {
     if (!confirm(`Remove ${opp.company_name_raw || "this role"} from your dashboard?`)) return;
-    const res = await fetch(`/api/opportunities/${opp.id}`, { method: "DELETE" });
-    if (res.ok) {
+    const res = await fetch(`/api/opportunities/${opp.id}`, { method: "DELETE" }).catch(() => null);
+    if (res?.ok) {
       router.push("/opportunities");
       router.refresh();
+    } else {
+      setErr("Could not delete — check your connection.");
     }
   }
 
@@ -262,6 +278,7 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
 
       <Card>
         <h2 className="mb-2 text-base font-medium">Application checklist</h2>
+        {reqErr && <p className="mb-1 text-sm text-red-600" role="alert">{reqErr}</p>}
         {reqs.length === 0 && <p className="py-1 text-sm text-stone-500">Nothing yet. Add what this application needs — items show up in Tasks on the dashboard.</p>}
         {reqs.map((r, i) => {
           const overdue = r.due_at && !r.is_complete && daysUntil(r.due_at) < 0;

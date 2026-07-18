@@ -39,7 +39,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (typeof b.notes === "string") update.notes = b.notes.slice(0, 5000);
 
   const { error } = await supabase.from("opportunities").update(update).eq("id", params.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("opportunity update failed:", error.message);
+    return NextResponse.json({ error: "Could not save changes." }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -47,6 +50,9 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (!UUID_RE.test(params.id)) return NextResponse.json({ error: "Bad id" }, { status: 400 });
   const supabase = createServerClient();
   const { error } = await supabase.from("opportunities").delete().eq("id", params.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("opportunity delete failed:", error.message);
+    return NextResponse.json({ error: "Could not delete." }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/db";
+import { safeEqual } from "@/lib/gate";
 
 export const dynamic = "force-dynamic";
 
 // Reachable two ways, both enforced by the middleware:
-//   - signed-in browser (cookie) — visit /api/reminders to test it
-//   - Vercel Cron with "Authorization: Bearer $CRON_SECRET"
+//   - signed-in browser (cookie) — visit /api/reminders to test it (DRY RUN:
+//     reports what's due but never sends, so a cookie-bearing GET forged via
+//     an <img> tag can't fire emails — same CSRF rationale as the imports)
+//   - Vercel Cron with "Authorization: Bearer $CRON_SECRET" — actually sends
 // Sends nothing unless RESEND_API_KEY and REMINDER_TO are configured.
 
 const ACTIVE = ["interested", "preparing", "applied", "interview"];
@@ -13,7 +16,10 @@ const ACTIVE = ["interested", "preparing", "applied", "interview"];
 const escapeHtml = (s: string) =>
   (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 
-export async function GET() {
+export async function GET(req: Request) {
+  const cron = process.env.CRON_SECRET;
+  const header = req.headers.get("authorization") || "";
+  const isCron = !!cron && safeEqual(header, "Bearer " + cron);
   const supabase = createServerClient();
   const horizon = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
@@ -31,6 +37,16 @@ export async function GET() {
   const items = data || [];
   if (items.length === 0) {
     return NextResponse.json({ sent: false, reason: "Nothing due in the next 7 days." });
+  }
+
+  if (!isCron) {
+    // Cookie-authenticated visit: report without sending.
+    return NextResponse.json({
+      sent: false,
+      dryRun: true,
+      due: items.length,
+      reason: "Signed-in preview — the scheduled cron run (CRON_SECRET bearer) sends the email.",
+    });
   }
 
   const key = process.env.RESEND_API_KEY;

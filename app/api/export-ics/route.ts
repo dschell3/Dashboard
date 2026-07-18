@@ -16,15 +16,27 @@ function nextICSDate(d: string) {
   return `${t.getUTCFullYear()}${String(t.getUTCMonth() + 1).padStart(2, "0")}${String(t.getUTCDate()).padStart(2, "0")}`;
 }
 
-// RFC 5545 line folding: continuation lines start with a space.
+// RFC 5545 line folding: continuation lines start with a space. The 75-line
+// limit is measured in OCTETS, not characters — company names with non-ASCII
+// (é, —) take multiple UTF-8 bytes, so count bytes and never split a
+// character's byte sequence.
+const BYTES = new TextEncoder();
 function fold(line: string) {
   const out: string[] = [];
-  let s = line;
-  while (s.length > 73) {
-    out.push(s.slice(0, 73));
-    s = " " + s.slice(73);
+  let cur = "";
+  let curBytes = 0;
+  for (const ch of line) {
+    const b = BYTES.encode(ch).length;
+    if (curBytes + b > 73) {
+      out.push(cur);
+      cur = " " + ch;
+      curBytes = 1 + b;
+    } else {
+      cur += ch;
+      curBytes += b;
+    }
   }
-  out.push(s);
+  out.push(cur);
   return out.join("\r\n");
 }
 

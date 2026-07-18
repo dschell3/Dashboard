@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, ArrowUpDown, ChevronDown, Clock, RefreshCw, Calendar, Trash2, Star, ExternalLink } from "lucide-react";
 import type { Opportunity, OppStatus } from "@/lib/types";
@@ -21,18 +21,36 @@ function deadlineRank(o: Opportunity) {
 
 export default function OpportunitiesTable({ initial }: { initial: Opportunity[] }) {
   const router = useRouter();
+  // Filters/sort start from the URL so a view survives navigating away and
+  // back (or a refresh), and a filtered view can be bookmarked.
+  const sp = useSearchParams();
+  const rawSort = sp.get("sort");
   const [opps, setOpps] = useState(initial);
-  const [q, setQ] = useState("");
-  const [status, setStatus] = useState("all");
-  const [source, setSource] = useState("all");
-  const [elig, setElig] = useState("all");
-  const [focusOnly, setFocusOnly] = useState(false);
-  const [sort, setSort] = useState<SortKey>("fit");
+  const [q, setQ] = useState(sp.get("q") || "");
+  const [status, setStatus] = useState(sp.get("status") || "all");
+  const [source, setSource] = useState(sp.get("source") || "all");
+  const [elig, setElig] = useState(sp.get("elig") || "all");
+  const [focusOnly, setFocusOnly] = useState(sp.get("focus") === "1");
+  const [sort, setSort] = useState<SortKey>(rawSort === "deadline" || rawSort === "company" ? rawSort : "fit");
   const [err, setErr] = useState<string | null>(null);
 
   // Optimistic edits live in local state; when the server sends fresh rows
   // (after an import or a save elsewhere), fold them back in.
   useEffect(() => setOpps(initial), [initial]);
+
+  // Mirror the current view into the URL (replaceState: no navigation, no
+  // history spam, defaults omitted so the clean view keeps a clean URL).
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (q) p.set("q", q);
+    if (status !== "all") p.set("status", status);
+    if (source !== "all") p.set("source", source);
+    if (elig !== "all") p.set("elig", elig);
+    if (focusOnly) p.set("focus", "1");
+    if (sort !== "fit") p.set("sort", sort);
+    const qs = p.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [q, status, source, elig, focusOnly, sort]);
 
   const rows = useMemo(() => {
     const out = opps.filter((o) => {
@@ -142,10 +160,10 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
         <table className="w-full min-w-[720px] table-fixed border-collapse">
           <thead>
             <tr className="bg-stone-50 text-left text-[13px] text-stone-500">
-              <Th w="34%" active={sort === "company"} onClick={() => setSort("company")}>Company</Th>
+              <Th w="34%" active={sort === "company"} dir="ascending" onClick={() => setSort("company")}>Company</Th>
               <th className="hidden px-3 py-2.5 font-medium sm:table-cell" style={{ width: "16%" }}>Location</th>
-              <Th w="9%" active={sort === "fit"} onClick={() => setSort("fit")}>Fit</Th>
-              <Th w="15%" active={sort === "deadline"} onClick={() => setSort("deadline")}>Window</Th>
+              <Th w="9%" active={sort === "fit"} dir="descending" onClick={() => setSort("fit")}>Fit</Th>
+              <Th w="15%" active={sort === "deadline"} dir="ascending" onClick={() => setSort("deadline")}>Window</Th>
               <th className="px-3 py-2.5 font-medium" style={{ width: "18%" }}>Status</th>
               <th className="px-3 py-2.5" style={{ width: "8%" }}><span className="sr-only">Actions</span></th>
             </tr>
@@ -164,13 +182,25 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
   );
 }
 
-function Th({ w, active, onClick, children }: { w: string; active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Th({ w, active, dir, onClick, children }: {
+  w: string;
+  active: boolean;
+  dir: "ascending" | "descending";
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  // A real <button> so sorting works from the keyboard, with aria-sort so
+  // screen readers announce the current order.
   return (
-    <th onClick={onClick} style={{ width: w }} className="cursor-pointer select-none px-3 py-2.5 font-medium">
-      <span className="inline-flex items-center gap-1">
+    <th style={{ width: w }} aria-sort={active ? dir : "none"} className="px-3 py-2.5 font-medium">
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex select-none items-center gap-1 rounded font-medium outline-none focus-visible:ring-2 focus-visible:ring-stone-400"
+      >
         {children}
         <ChevronDown className={`h-3 w-3 ${active ? "opacity-100" : "opacity-0"}`} />
-      </span>
+      </button>
     </th>
   );
 }

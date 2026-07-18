@@ -14,14 +14,18 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const sp = useSearchParams();
-  // Only same-origin relative paths — "//evil.com" or absolute URLs are ignored.
+  // Only same-origin relative paths — "//evil.com" or absolute URLs are
+  // ignored. "\" is rejected too: browsers normalize "/\evil.com" to
+  // "//evil.com", which would make it protocol-relative.
   const rawNext = sp.get("next") || "";
-  const next = /^\/(?!\/)/.test(rawNext) ? rawNext : "/";
+  const next = /^\/(?![/\\])/.test(rawNext) && !rawNext.includes("\\") ? rawNext : "/";
   const [pw, setPw] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function submit() {
+  async function submit(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!pw || busy) return;
     setBusy(true);
     setErr(null);
     try {
@@ -47,25 +51,28 @@ function LoginForm() {
         <Briefcase className="h-5 w-5 text-stone-500" />
         <span className="text-base font-medium">Internship dashboard</span>
       </div>
-      <div className="rounded-xl border border-stone-200 bg-white p-5">
-        <label className="mb-1 block text-[13px] text-stone-500">Password</label>
+      {/* A real <form> so password managers offer to save and autofill. */}
+      <form onSubmit={submit} className="rounded-xl border border-stone-200 bg-white p-5">
+        <label htmlFor="password" className="mb-1 block text-[13px] text-stone-500">Password</label>
         <input
+          id="password"
+          name="password"
           type="password"
+          autoComplete="current-password"
           value={pw}
           onChange={(e) => setPw(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
           autoFocus
           className="h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
         />
-        {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
+        {err && <p className="mt-2 text-sm text-red-600" role="alert">{err}</p>}
         <button
-          onClick={submit}
+          type="submit"
           disabled={busy || !pw}
           className="mt-3 w-full rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-800 disabled:opacity-60"
         >
           {busy ? "Signing in…" : "Sign in"}
         </button>
-      </div>
+      </form>
       <p className="mt-3 text-center text-xs text-stone-400">
         Set APP_PASSWORD in .env.local (and in Vercel before deploying).
       </p>

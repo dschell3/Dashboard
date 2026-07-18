@@ -50,7 +50,9 @@ export default async function DashboardPage() {
   const deadlineItems = visible
     .filter((o) => within(o.deadline_at, 30) && ACTIVE.includes(o.status))
     .sort((a, b) => (a.deadline_at! < b.deadline_at! ? -1 : 1));
-  const opensItems = visible.filter((o) => !o.deadline_at && within(o.window_opens_at, 30));
+  const opensItems = visible.filter(
+    (o) => !o.deadline_at && within(o.window_opens_at, 30) && ACTIVE.includes(o.status)
+  );
   const rollingTop = visible
     .filter((o) => o.is_rolling && !o.deadline_at && !within(o.window_opens_at, 30) && ACTIVE.includes(o.status))
     .slice(0, 3);
