@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/db";
+import { createServerClient, upsertGrouped } from "@/lib/db";
 import { fetchSwelistListings } from "@/lib/swelist";
 import { buildProfile } from "@/lib/profile";
 import { scoreListing, matchFocusCompany } from "@/lib/scoring";
@@ -79,11 +79,15 @@ async function runImport() {
     const known = new Set((existing || []).map((r: any) => r.external_id));
     const added = rows.filter((r) => !known.has(r.external_id)).length;
 
-    for (let i = 0; i < rows.length; i += 500) {
-      const batch = rows.slice(i, i + 500);
-      const { error } = await supabase.from("opportunities").upsert(batch, { onConflict: "external_id" });
-      if (error) throw error;
-    }
+    // Existing rows keep the work_mode you may have set by hand on the detail
+    // page: the column is only written when the row is first created.
+    const finalRows = rows.map((r) => {
+      if (!known.has(r.external_id)) return r;
+      const { work_mode, ...rest } = r;
+      return rest;
+    });
+
+    await upsertGrouped(supabase, "opportunities", finalRows, "external_id");
 
     return NextResponse.json({ added, updated: rows.length - added, scanned: listings.length });
   } catch (e: any) {
