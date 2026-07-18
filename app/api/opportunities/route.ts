@@ -54,8 +54,10 @@ export async function POST(req: Request) {
       status: ["interested", "preparing", "applied", "interview", "offer"].includes(b.status) ? b.status : "interested",
       source: "manual",
       source_url: url,
+      // is_rolling keys off the VALIDATED date: a malformed deadline string
+      // must not produce a row that is neither rolling nor dated.
       deadline_at: /^\d{4}-\d{2}-\d{2}$/.test(b.deadline || "") ? b.deadline : null,
-      is_rolling: !b.deadline,
+      is_rolling: !/^\d{4}-\d{2}-\d{2}$/.test(b.deadline || ""),
       season: "Summer 2026",
       work_mode: /remote/i.test(location) ? "remote" : location ? "onsite" : null,
       date_posted: new Date().toISOString(),
