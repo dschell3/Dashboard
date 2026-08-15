@@ -3,8 +3,13 @@
 @tailwind utilities;
 
 html, body {
-  background: #fafaf9;
-  color: #1c1917;
+  background: #fafaf9; /* stone-50 */
+  color: #1c1917;      /* stone-900 */
+}
+
+html.dark, html.dark body {
+  background: #0c0a09; /* stone-950 */
+  color: #e7e5e4;      /* stone-200 */
 }
 
 * { box-sizing: border-box; }

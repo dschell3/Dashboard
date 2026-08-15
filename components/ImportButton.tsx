@@ -42,7 +42,7 @@ export default function ImportButton() {
     <button
       onClick={run}
       disabled={loading}
-      className="inline-flex items-center gap-1.5 rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-800 disabled:opacity-60"
+      className="inline-flex items-center gap-1.5 rounded-md bg-stone-900 dark:bg-stone-100 px-3 py-1.5 text-sm text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-60"
     >
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
       {loading ? "Importing…" : "Import roles"}

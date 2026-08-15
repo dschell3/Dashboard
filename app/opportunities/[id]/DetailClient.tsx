@@ -17,8 +17,8 @@ const BREAKDOWN_LABELS: Record<string, string> = {
   location: "Location", focus: "Focus company", keywords: "Keywords", role: "Role type", freshness: "Freshness",
 };
 
-const input = "h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400";
-const label = "mb-1 block text-[13px] text-stone-500";
+const input = "h-9 w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 text-sm outline-none focus:border-stone-400 dark:focus:border-stone-500";
+const label = "mb-1 block text-[13px] text-stone-500 dark:text-stone-400";
 
 export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Requirement[] }) {
   const router = useRouter();
@@ -129,14 +129,14 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
 
   return (
     <div>
-      <Link href="/opportunities" className="mb-4 inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-800">
+      <Link href="/opportunities" className="mb-4 inline-flex items-center gap-1.5 text-sm text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200">
         <ArrowLeft className="h-4 w-4" /> All opportunities
       </Link>
 
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-medium">{opp.company_name_raw || "—"}</h1>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-stone-500 dark:text-stone-400">
             {opp.title}
             {opp.locations && opp.locations[0] ? ` · ${opp.locations[0]}` : opp.work_mode ? ` · ${opp.work_mode}` : ""}
             {" · "}{sourceLabel(opp.source)}
@@ -157,7 +157,7 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
               href={link}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-white px-3 py-1.5 text-sm hover:bg-stone-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-1.5 text-sm hover:bg-stone-50 dark:hover:bg-stone-800/50"
             >
               <ExternalLink className="h-4 w-4" /> Posting
             </a>
@@ -186,13 +186,13 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
             </div>
             <div>
               <div className="mb-1 flex items-center justify-between">
-                <label className="text-[13px] text-stone-500">Deadline (blank = rolling)</label>
+                <label className="text-[13px] text-stone-500 dark:text-stone-400">Deadline (blank = rolling)</label>
                 {safeUrl(f.source_url) && (
                   <button
                     onClick={scanDeadline}
                     disabled={scanning}
                     title="Fetch the posting and look for a stated deadline"
-                    className="inline-flex items-center gap-1 text-[13px] text-stone-500 underline hover:text-stone-800 disabled:opacity-60"
+                    className="inline-flex items-center gap-1 text-[13px] text-stone-500 dark:text-stone-400 underline hover:text-stone-800 dark:hover:text-stone-200 disabled:opacity-60"
                   >
                     <ScanSearch className="h-3.5 w-3.5" />
                     {scanning ? "Scanning…" : "Scan posting"}
@@ -221,14 +221,14 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
             <div className="sm:col-span-2">
               <label className={label}>Notes (recruiter names, referral, application details…)</label>
               <textarea
-                className="min-h-[96px] w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm outline-none focus:border-stone-400"
+                className="min-h-[96px] w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-2 text-sm outline-none focus:border-stone-400 dark:focus:border-stone-500"
                 value={f.notes}
                 onChange={(e) => set("notes", e.target.value)}
               />
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2">
-            <button onClick={save} disabled={saving} className="rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-800 disabled:opacity-60">
+            <button onClick={save} disabled={saving} className="rounded-md bg-stone-900 dark:bg-stone-100 px-3 py-1.5 text-sm text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-60">
               {saving ? "Saving…" : "Save changes"}
             </button>
           </div>
@@ -238,7 +238,7 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
           <Card>
             <h2 className="mb-2 text-base font-medium">Why this score</h2>
             {breakdown.length === 0 ? (
-              <p className="text-sm text-stone-500">No score breakdown stored for this role.</p>
+              <p className="text-sm text-stone-500 dark:text-stone-400">No score breakdown stored for this role.</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {breakdown.map(([k, v]) => (
@@ -246,7 +246,7 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
                 ))}
               </div>
             )}
-            <div className="mt-3 space-y-1 text-[13px] text-stone-500">
+            <div className="mt-3 space-y-1 text-[13px] text-stone-500 dark:text-stone-400">
               {opp.date_posted && <p>Posted {new Date(opp.date_posted).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>}
               {opp.applied_at && <p>Applied {new Date(opp.applied_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>}
               {opp.season && <p>{opp.season}</p>}
@@ -255,8 +255,8 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
           </Card>
           <Card>
             <h2 className="mb-2 text-base font-medium">Remove</h2>
-            <p className="mb-2 text-[13px] text-stone-500">Deletes this role and its checklist. It will come back on the next import if it is still in the feed.</p>
-            <button onClick={deleteOpp} className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-white px-3 py-1.5 text-sm text-red-600 hover:bg-red-50">
+            <p className="mb-2 text-[13px] text-stone-500 dark:text-stone-400">Deletes this role and its checklist. It will come back on the next import if it is still in the feed.</p>
+            <button onClick={deleteOpp} className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40">
               <Trash2 className="h-4 w-4" /> Delete role
             </button>
           </Card>
@@ -265,15 +265,15 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
 
       <Card>
         <h2 className="mb-2 text-base font-medium">Application checklist</h2>
-        {reqs.length === 0 && <p className="py-1 text-sm text-stone-500">Nothing yet. Add what this application needs — items show up in Tasks on the dashboard.</p>}
+        {reqs.length === 0 && <p className="py-1 text-sm text-stone-500 dark:text-stone-400">Nothing yet. Add what this application needs — items show up in Tasks on the dashboard.</p>}
         {reqs.map((r, i) => {
           const overdue = r.due_at && !r.is_complete && daysUntil(r.due_at) < 0;
           return (
-            <div key={r.id} className={`flex items-center gap-2.5 py-2 ${i > 0 ? "border-t border-stone-200" : ""}`}>
-              <button onClick={() => toggleReq(r)} aria-label={r.is_complete ? "Mark incomplete" : "Mark complete"} className="text-stone-400 hover:text-stone-700">
-                {r.is_complete ? <CheckSquare className="h-[18px] w-[18px] text-emerald-600" /> : <Square className="h-[18px] w-[18px]" />}
+            <div key={r.id} className={`flex items-center gap-2.5 py-2 ${i > 0 ? "border-t border-stone-200 dark:border-stone-800" : ""}`}>
+              <button onClick={() => toggleReq(r)} aria-label={r.is_complete ? "Mark incomplete" : "Mark complete"} className="text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300">
+                {r.is_complete ? <CheckSquare className="h-[18px] w-[18px] text-emerald-600 dark:text-emerald-400" /> : <Square className="h-[18px] w-[18px]" />}
               </button>
-              <div className={`min-w-0 flex-1 truncate text-sm ${r.is_complete ? "text-stone-400 line-through" : ""}`}>
+              <div className={`min-w-0 flex-1 truncate text-sm ${r.is_complete ? "text-stone-400 dark:text-stone-500 line-through" : ""}`}>
                 {r.label || statusLabel(r.type || "Task")}
               </div>
               {r.due_at && (
@@ -281,22 +281,22 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
                   {overdue ? "Overdue" : `Due ${fmtDate(r.due_at)}`}
                 </Chip>
               )}
-              <button onClick={() => deleteReq(r.id)} aria-label="Delete task" className="rounded-md p-1 text-stone-400 hover:bg-stone-100 hover:text-red-600">
+              <button onClick={() => deleteReq(r.id)} aria-label="Delete task" className="rounded-md p-1 text-stone-400 dark:text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 dark:hover:bg-white hover:text-red-600 dark:hover:text-red-400">
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
           );
         })}
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-stone-200 pt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-stone-200 dark:border-stone-800 pt-3">
           <input
-            className="h-9 min-w-0 flex-1 rounded-md border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
+            className="h-9 min-w-0 flex-1 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 text-sm outline-none focus:border-stone-400 dark:focus:border-stone-500"
             placeholder="e.g. Tailor resume for QA emphasis"
             value={reqForm.label}
             onChange={(e) => setReqForm((p) => ({ ...p, label: e.target.value }))}
             onKeyDown={(e) => e.key === "Enter" && addReq()}
           />
           <select
-            className="h-9 rounded-md border border-stone-200 bg-white px-2 text-sm outline-none focus:border-stone-400"
+            className="h-9 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-2 text-sm outline-none focus:border-stone-400 dark:focus:border-stone-500"
             value={reqForm.type}
             onChange={(e) => setReqForm((p) => ({ ...p, type: e.target.value }))}
             aria-label="Task type"
@@ -305,12 +305,12 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
           </select>
           <input
             type="date"
-            className="h-9 rounded-md border border-stone-200 bg-white px-2 text-sm outline-none focus:border-stone-400"
+            className="h-9 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-2 text-sm outline-none focus:border-stone-400 dark:focus:border-stone-500"
             value={reqForm.due_at}
             onChange={(e) => setReqForm((p) => ({ ...p, due_at: e.target.value }))}
             aria-label="Due date"
           />
-          <button onClick={addReq} disabled={reqBusy || !reqForm.label.trim()} className="inline-flex items-center gap-1.5 rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-800 disabled:opacity-60">
+          <button onClick={addReq} disabled={reqBusy || !reqForm.label.trim()} className="inline-flex items-center gap-1.5 rounded-md bg-stone-900 dark:bg-stone-100 px-3 py-1.5 text-sm text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-60">
             <Plus className="h-4 w-4" /> Add
           </button>
         </div>

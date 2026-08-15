@@ -37,7 +37,7 @@ export default function TasksPanel({ tasks }: { tasks: TaskItem[] }) {
   }
 
   if (tasks.length === 0) {
-    return <p className="py-2 text-sm text-stone-500">No open tasks. Open a role and add its application checklist to track work here.</p>;
+    return <p className="py-2 text-sm text-stone-500 dark:text-stone-400">No open tasks. Open a role and add its application checklist to track work here.</p>;
   }
 
   return (
@@ -45,12 +45,12 @@ export default function TasksPanel({ tasks }: { tasks: TaskItem[] }) {
       {tasks.map((t, i) => {
         const overdue = t.due_at && daysUntil(t.due_at) < 0;
         return (
-          <div key={t.id} className={`flex items-center gap-2.5 py-2 ${i > 0 ? "border-t border-stone-200" : ""}`}>
+          <div key={t.id} className={`flex items-center gap-2.5 py-2 ${i > 0 ? "border-t border-stone-200 dark:border-stone-800" : ""}`}>
             <button
               onClick={() => complete(t.id)}
               disabled={busyId === t.id}
               aria-label={`Mark "${t.label}" complete`}
-              className="shrink-0 text-stone-400 hover:text-emerald-600 disabled:opacity-50"
+              className="shrink-0 text-stone-400 dark:text-stone-500 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-50"
             >
               <Square className="h-[18px] w-[18px]" />
             </button>
@@ -58,8 +58,8 @@ export default function TasksPanel({ tasks }: { tasks: TaskItem[] }) {
               {t.label}
               {t.company && (
                 t.opportunity_id
-                  ? <Link href={`/opportunities/${t.opportunity_id}`} className="text-stone-500 hover:underline"> — {t.company}</Link>
-                  : <span className="text-stone-500"> — {t.company}</span>
+                  ? <Link href={`/opportunities/${t.opportunity_id}`} className="text-stone-500 dark:text-stone-400 hover:underline"> — {t.company}</Link>
+                  : <span className="text-stone-500 dark:text-stone-400"> — {t.company}</span>
               )}
             </div>
             {t.due_at && (

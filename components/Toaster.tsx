@@ -17,15 +17,15 @@ export function toast(text: string, tone: ToastTone = "info") {
 }
 
 const toneStyle: Record<ToastTone, string> = {
-  success: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  error: "border-red-200 bg-red-50 text-red-800",
-  info: "border-stone-200 bg-white text-stone-700",
+  success: "border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200",
+  error: "border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200",
+  info: "border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300",
 };
 
 function ToneIcon({ tone }: { tone: ToastTone }) {
-  if (tone === "success") return <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />;
-  if (tone === "error") return <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />;
-  return <Info className="h-4 w-4 shrink-0 text-stone-500" />;
+  if (tone === "success") return <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />;
+  if (tone === "error") return <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />;
+  return <Info className="h-4 w-4 shrink-0 text-stone-500 dark:text-stone-400" />;
 }
 
 export default function Toaster() {

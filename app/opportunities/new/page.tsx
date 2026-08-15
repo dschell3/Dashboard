@@ -67,19 +67,19 @@ function NewOpportunityForm() {
     }
   }
 
-  const input = "h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400";
-  const label = "mb-1 block text-[13px] text-stone-500";
+  const input = "h-9 w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 text-sm outline-none focus:border-stone-400 dark:focus:border-stone-500";
+  const label = "mb-1 block text-[13px] text-stone-500 dark:text-stone-400";
 
   return (
     <div className="mx-auto max-w-lg">
       <h1 className="mb-4 text-lg font-medium">Add an opportunity</h1>
       {captured && (
-        <div className="mb-3 flex items-center gap-1.5 rounded-md bg-blue-50 px-3 py-2 text-[13px] text-blue-700">
+        <div className="mb-3 flex items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 px-3 py-2 text-[13px] text-blue-700 dark:text-blue-300">
           <Sparkles className="h-3.5 w-3.5 shrink-0" />
           Captured from {captured.host || "the page"} — double-check the fields, then save.
         </div>
       )}
-      <div className="space-y-3 rounded-xl border border-stone-200 bg-white p-5">
+      <div className="space-y-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5">
         <div><label className={label}>Company</label><input className={input} value={f.company} onChange={(e) => set("company", e.target.value)} /></div>
         <div><label className={label}>Role</label><input className={input} value={f.title} onChange={(e) => set("title", e.target.value)} /></div>
         <div><label className={label}>Location</label><input className={input} value={f.location} onChange={(e) => set("location", e.target.value)} placeholder="e.g. Folsom, CA or Remote" /></div>
@@ -105,12 +105,12 @@ function NewOpportunityForm() {
         </div>
         <div><label className={label}>Deadline (optional — blank means rolling)</label><input type="date" className={input} value={f.deadline} onChange={(e) => set("deadline", e.target.value)} /></div>
         <div><label className={label}>Link (optional)</label><input className={input} value={f.source_url} onChange={(e) => set("source_url", e.target.value)} placeholder="https://…" /></div>
-        {err && <p className="text-sm text-red-600">{err}</p>}
+        {err && <p className="text-sm text-red-600 dark:text-red-400">{err}</p>}
         <div className="flex items-center gap-2 pt-1">
-          <button onClick={save} disabled={saving} className="rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-800 disabled:opacity-60">
+          <button onClick={save} disabled={saving} className="rounded-md bg-stone-900 dark:bg-stone-100 px-3 py-1.5 text-sm text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-60">
             {saving ? "Saving…" : "Save opportunity"}
           </button>
-          <Link href="/opportunities" className="rounded-md border border-stone-200 px-3 py-1.5 text-sm hover:bg-stone-50">Cancel</Link>
+          <Link href="/opportunities" className="rounded-md border border-stone-200 dark:border-stone-800 px-3 py-1.5 text-sm hover:bg-stone-50 dark:hover:bg-stone-800/50">Cancel</Link>
         </div>
       </div>
     </div>

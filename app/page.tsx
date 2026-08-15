@@ -82,7 +82,7 @@ export default async function DashboardPage() {
 
       <div className="mb-5 flex items-baseline justify-between">
         <h1 className="text-lg font-medium">Summer 2026</h1>
-        <span className="text-[13px] text-stone-500">{activeRoles} active roles</span>
+        <span className="text-[13px] text-stone-500 dark:text-stone-400">{activeRoles} active roles</span>
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -95,17 +95,17 @@ export default async function DashboardPage() {
       <Card className="mb-5">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-base font-medium">Top matches</h2>
-          <span className="text-[13px] text-stone-500">sorted by fit</span>
+          <span className="text-[13px] text-stone-500 dark:text-stone-400">sorted by fit</span>
         </div>
         {topMatches.length === 0 ? (
-          <p className="py-4 text-sm text-stone-500">
-            No opportunities yet. Click <span className="font-medium text-stone-700">Import from swelist</span> to pull live internships scored to your profile, or <Link href="/opportunities/new" className="underline">add one</Link>.
+          <p className="py-4 text-sm text-stone-500 dark:text-stone-400">
+            No opportunities yet. Click <span className="font-medium text-stone-700 dark:text-stone-300">Import from swelist</span> to pull live internships scored to your profile, or <Link href="/opportunities/new" className="underline">add one</Link>.
           </p>
         ) : (
           topMatches.map((o, i) => <OppRow key={o.id} o={o} first={i === 0} />)
         )}
         {hiddenCount > 0 && (
-          <div className="mt-3 flex items-center gap-1.5 text-[13px] text-stone-500">
+          <div className="mt-3 flex items-center gap-1.5 text-[13px] text-stone-500 dark:text-stone-400">
             <EyeOff className="h-3.5 w-3.5" />
             {hiddenCount} role{hiddenCount > 1 ? "s" : ""} hidden in excluded sectors
           </div>
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
         <Card>
           <h2 className="mb-1 text-base font-medium">Needs attention</h2>
           {attention.length === 0 ? (
-            <p className="py-2 text-sm text-stone-500">Nothing time-sensitive yet.</p>
+            <p className="py-2 text-sm text-stone-500 dark:text-stone-400">Nothing time-sensitive yet.</p>
           ) : (
             attention.map((o, i) => <AttentionRow key={o.id} o={o} first={i === 0} />)
           )}
@@ -131,9 +131,9 @@ export default async function DashboardPage() {
         <h2 className="mb-3 text-base font-medium">Pipeline</h2>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           {pipelineCounts.map((p) => (
-            <div key={p.status} className="rounded-md bg-stone-100/70 p-2.5 text-center">
-              <div className={`text-xl font-medium ${p.count === 0 ? "text-stone-400" : "text-stone-900"}`}>{p.count}</div>
-              <div className="mt-0.5 text-[13px] text-stone-500">{statusLabel(p.status)}</div>
+            <div key={p.status} className="rounded-md bg-stone-100/70 dark:bg-stone-800/60 p-2.5 text-center">
+              <div className={`text-xl font-medium ${p.count === 0 ? "text-stone-400 dark:text-stone-500" : "text-stone-900 dark:text-stone-100"}`}>{p.count}</div>
+              <div className="mt-0.5 text-[13px] text-stone-500 dark:text-stone-400">{statusLabel(p.status)}</div>
             </div>
           ))}
         </div>
@@ -148,14 +148,14 @@ function OppRow({ o, first }: { o: Opportunity; first: boolean }) {
   return (
     <Link
       href={`/opportunities/${o.id}`}
-      className={`flex items-center gap-3 rounded-md p-2.5 hover:bg-stone-50 ${first ? "" : "border-t border-stone-200"}`}
+      className={`flex items-center gap-3 rounded-md p-2.5 hover:bg-stone-50 dark:hover:bg-stone-800/50 ${first ? "" : "border-t border-stone-200 dark:border-stone-800"}`}
     >
-      <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-medium text-stone-500">
+      <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-xs font-medium text-stone-500 dark:text-stone-400">
         {initials(o.company_name_raw || o.title)}
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{o.company_name_raw || "—"}</div>
-        <div className="truncate text-xs text-stone-500">{sub}</div>
+        <div className="truncate text-xs text-stone-500 dark:text-stone-400">{sub}</div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Chip tone="blue">{o.fit_score ?? 0}</Chip>
@@ -171,7 +171,7 @@ function OppRow({ o, first }: { o: Opportunity; first: boolean }) {
           : win.kind === "opens"
           ? <Chip tone="info"><Calendar className="h-3 w-3" />{win.text}</Chip>
           : <Chip tone="neutral"><RefreshCw className="h-3 w-3" />{win.text}</Chip>}
-        <ChevronRight className="hidden h-4 w-4 text-stone-400 sm:block" />
+        <ChevronRight className="hidden h-4 w-4 text-stone-400 dark:text-stone-500 sm:block" />
       </div>
     </Link>
   );
@@ -185,11 +185,11 @@ function AttentionRow({ o, first }: { o: Opportunity; first: boolean }) {
     : win.kind === "due" ? <Chip tone="warning">{win.text}</Chip>
     : <Chip tone="info">{win.text}</Chip>;
   return (
-    <Link href={`/opportunities/${o.id}`} className={`flex items-center gap-2.5 py-2 hover:bg-stone-50 ${first ? "" : "border-t border-stone-200"}`}>
+    <Link href={`/opportunities/${o.id}`} className={`flex items-center gap-2.5 py-2 hover:bg-stone-50 dark:hover:bg-stone-800/50 ${first ? "" : "border-t border-stone-200 dark:border-stone-800"}`}>
       <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm">{o.company_name_raw}</div>
-        <div className="truncate text-[13px] text-stone-500">{o.title}</div>
+        <div className="truncate text-[13px] text-stone-500 dark:text-stone-400">{o.title}</div>
       </div>
       {chip}
     </Link>
