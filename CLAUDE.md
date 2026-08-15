@@ -35,8 +35,9 @@ flag eligibility, pull live postings automatically, and surface deadlines.
     Automation, Scribd, Instructure/Parchment), SmartRecruiters (Solidigm),
     Workday (HPE, Micron, VSP). Config lives in `companies.ats_type` +
     `companies.ats_slug`; Workday slugs are `host/site`. Workday boards are
-    searched for "intern" server-side (page size 50, Workday's max — a single
-    request per board); small boards are scanned in full (this matters:
+    searched for "intern" server-side (paged at limit 20 — the CXS API 400s
+    on anything larger — up to 3 pages per board); small boards are scanned
+    in full (this matters:
     Inductive's "Software Technical Analyst" is a target role without "intern"
     in the title). ATS pulls require metro-or-remote location before scoring
     (focus bonus alone would otherwise pass far-away roles). Quality gates
