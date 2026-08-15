@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createServerClient } from "@/lib/db";
 import Nav from "@/components/Nav";
 import TasksPanel, { type TaskItem } from "@/components/TasksPanel";
+import ResumeCard, { type ResumeMeta } from "@/components/ResumeCard";
 import { Card, StatCard, Chip } from "@/components/ui";
 import { windowInfo, statusLabel, initials, startOfTodayMs } from "@/lib/format";
 import type { Opportunity } from "@/lib/types";
@@ -76,6 +77,16 @@ export default async function DashboardPage() {
 
   const hiddenCount = opps.length - visible.length;
 
+  // Resume on file (for the tailoring feature). A missing table (migration
+  // 003 not applied yet) errors — treat as "no resume" so the card degrades.
+  let resumeMeta: ResumeMeta = null;
+  const { data: resumeRows } = await supabase
+    .from("resumes")
+    .select("filename, mime_type, updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (resumeRows && resumeRows.length > 0) resumeMeta = resumeRows[0] as ResumeMeta;
+
   return (
     <>
       <Nav />
@@ -126,6 +137,11 @@ export default async function DashboardPage() {
           <TasksPanel tasks={tasks} />
         </Card>
       </div>
+
+      <Card className="mb-5">
+        <h2 className="mb-2 text-base font-medium">Resume on file</h2>
+        <ResumeCard meta={resumeMeta} />
+      </Card>
 
       <Card>
         <h2 className="mb-3 text-base font-medium">Pipeline</h2>

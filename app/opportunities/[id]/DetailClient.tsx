@@ -10,6 +10,7 @@ import type { Opportunity, Requirement } from "@/lib/types";
 import { windowInfo, statusLabel, safeUrl, fmtDate, daysUntil, sourceLabel } from "@/lib/format";
 import { Chip, Card } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import ResumePanel, { type TailoredResume } from "@/components/ResumePanel";
 
 const STATUSES = ["interested", "preparing", "applied", "interview", "offer", "rejected", "withdrawn", "closed"];
 const REQ_TYPES = ["resume", "cover_letter", "transcript", "essay", "references", "portfolio", "online_assessment", "other"];
@@ -20,7 +21,12 @@ const BREAKDOWN_LABELS: Record<string, string> = {
 const input = "h-9 w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 text-sm outline-none focus:border-stone-400 dark:focus:border-stone-500";
 const label = "mb-1 block text-[13px] text-stone-500 dark:text-stone-400";
 
-export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Requirement[] }) {
+export default function DetailClient({ opp, reqs, hasResume, tailored }: {
+  opp: Opportunity;
+  reqs: Requirement[];
+  hasResume: boolean;
+  tailored: TailoredResume[];
+}) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -262,6 +268,11 @@ export default function DetailClient({ opp, reqs }: { opp: Opportunity; reqs: Re
           </Card>
         </div>
       </div>
+
+      <Card className="mb-5">
+        <h2 className="mb-2 text-base font-medium">Resume</h2>
+        <ResumePanel oppId={opp.id} hasResume={hasResume} tailored={tailored} />
+      </Card>
 
       <Card>
         <h2 className="mb-2 text-base font-medium">Application checklist</h2>

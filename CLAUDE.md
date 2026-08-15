@@ -82,6 +82,19 @@ flag eligibility, pull live postings automatically, and surface deadlines.
   (overdue included); no-ops gracefully without `RESEND_API_KEY`/`REMINDER_TO`.
   A signed-in (cookie) GET is a dry run that reports what's due; only the
   CRON_SECRET bearer actually sends.
+- **Resume tailoring** (migration 003; `ANTHROPIC_API_KEY` required, feature
+  degrades gracefully without either): single resume on file (PDF/.txt/.md,
+  ≤4MB, stored base64 in `resumes` — uploading replaces), tailored per
+  opportunity via the Claude API (`/api/opportunities/[id]/tailor`, plain
+  fetch per the no-SDK rule, model `claude-opus-5` / `ANTHROPIC_MODEL`
+  override, effort medium to fit Vercel's function time limit, PDF sent as a
+  base64 document block, `stop_reason: "refusal"` handled before reading
+  content). Job text priority: pasted > `opportunities.description` (stored
+  stripped at ATS import, ≤20k chars, omitted-when-absent so re-imports never
+  clear it) > SSRF-guarded live fetch (`lib/fetchGuard.ts`, shared with the
+  scan route) > title/company only. Tailored versions live in
+  `tailored_resumes` (view/copy/delete on the detail page). The system prompt
+  forbids inventing experience — tailoring reorders/rewords only; keep that.
 
 ## Security model — invariants (do not weaken)
 
@@ -165,7 +178,12 @@ flag eligibility, pull live postings automatically, and surface deadlines.
 - Env (Vercel + `.env.local`): `NEXT_PUBLIC_SUPABASE_URL`,
   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
   `APP_PASSWORD`, `CRON_SECRET`; optional `RESEND_API_KEY`, `REMINDER_TO`,
-  `REMINDER_FROM`. **Never commit `.env.local`; never print key values.**
+  `REMINDER_FROM`, `ANTHROPIC_API_KEY` (+ `ANTHROPIC_MODEL`,
+  `ANTHROPIC_BASE_URL` for tests). **Never commit `.env.local`; never print
+  key values.** `NEXT_PUBLIC_*` values are inlined at build time — a runtime
+  override without a rebuild does nothing.
+- Migrations 001–003 applied in order via the Supabase SQL editor; 003 adds
+  `opportunities.description`, `resumes`, `tailored_resumes`.
 - Crons (UTC): swelist 14:00, ATS 14:15, reminders 14:30 (`vercel.json`).
 - Validation: `npm install`, `npx tsc --noEmit`, `npx next build` (placeholder
   env vars suffice for building), `npm test` (Vitest — unit tests for

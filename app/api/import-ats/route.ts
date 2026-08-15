@@ -94,6 +94,10 @@ async function runImport() {
             // Only written when a deadline was found — so a re-import never
             // wipes out a deadline you set by hand on the detail page.
             ...(deadline ? { deadline_at: deadline, is_rolling: false } : {}),
+            // Posting text (stripped) powers resume tailoring without a live
+            // fetch of JS-rendered ATS pages. Omitted when absent so a pull
+            // without text never clears a previously stored description.
+            ...(description ? { description: stripHtml(String(description)).slice(0, 20000) } : {}),
           });
         }
         return {
