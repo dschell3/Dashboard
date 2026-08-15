@@ -47,9 +47,11 @@ flag eligibility, pull live postings automatically, and surface deadlines.
     never matches; Workday's search matches descriptions). ATS fetches send a
     browser-like User-Agent (Workday bot protection 403s bare fetches).
     **Ghost cleanup:** after a successful board pull, that company's
-    previously imported rows missing from the pull are set to `closed` — but
+    previously imported rows that no longer pass the CURRENT import rules
+    (delisted, senior-titled, no longer relevant) are set to `closed` — but
     only rows still on the untouched default status `interested`, so
-    user-driven pipeline state is never auto-closed.
+    user-driven pipeline state is never auto-closed. This also retroactively
+    sweeps rows imported before a filter existed.
   - Capture bookmarklet (`/capture`, `lib/capture.ts`): sends only URL, title,
     and selection; ALL parsing stays server/app-side so installed bookmarklets
     never go stale. Prefills `/opportunities/new` via `?u=&t=&s=`.
