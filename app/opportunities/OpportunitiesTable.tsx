@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, ArrowUpDown, ChevronDown, Clock, RefreshCw, Calendar, Trash2, Star, ExternalLink } from "lucide-react";
@@ -36,9 +36,24 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     rawSort === "deadline" || rawSort === "company" || rawSort === "posted" ? rawSort : "fit"
   );
 
+  // Multi-select for bulk delete. Checkbox click (or ctrl/cmd-click on a row)
+  // toggles one row; shift-click extends from the last toggled row, file-
+  // manager style. Escape clears.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const anchorRef = useRef<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   // Optimistic edits live in local state; when the server sends fresh rows
   // (after an import or a save elsewhere), fold them back in.
   useEffect(() => setOpps(initial), [initial]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelected(new Set());
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Mirror the current view into the URL (replaceState: no navigation, no
   // history spam, defaults omitted so the clean view keeps a clean URL).
@@ -88,6 +103,54 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     } else {
       router.refresh();
     }
+  }
+
+  function handleSelect(id: string, e: { shiftKey: boolean }) {
+    const ids = rows.map((r) => r.id);
+    const next = new Set(selected);
+    const anchor = anchorRef.current;
+    if (e.shiftKey && anchor && ids.includes(anchor) && ids.includes(id)) {
+      // Extend from the anchor across the CURRENT visible order.
+      const a = ids.indexOf(anchor);
+      const b = ids.indexOf(id);
+      const [lo, hi] = a < b ? [a, b] : [b, a];
+      for (let i = lo; i <= hi; i++) next.add(ids[i]);
+    } else {
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      anchorRef.current = id;
+    }
+    setSelected(next);
+  }
+
+  function toggleAllVisible() {
+    const ids = rows.map((r) => r.id);
+    const allSelected = ids.length > 0 && ids.every((id) => selected.has(id));
+    setSelected(allSelected ? new Set() : new Set(ids));
+    anchorRef.current = null;
+  }
+
+  async function removeSelected() {
+    const ids = opps.filter((o) => selected.has(o.id)).map((o) => o.id);
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} role${ids.length > 1 ? "s" : ""} and their checklists? Live listings can return on the next import.`)) return;
+    setBulkBusy(true);
+    const prev = opps;
+    setOpps((p) => p.filter((o) => !selected.has(o.id))); // optimistic
+    const results = await Promise.all(
+      ids.map((id) => fetch(`/api/opportunities/${id}`, { method: "DELETE" }).then((r) => r.ok).catch(() => false))
+    );
+    const failed = results.filter((ok) => !ok).length;
+    setBulkBusy(false);
+    setSelected(new Set());
+    anchorRef.current = null;
+    if (failed) {
+      setOpps(prev);
+      toast(`Could not delete ${failed} of ${ids.length} — check your connection.`, "error");
+    } else {
+      toast(`Deleted ${ids.length} role${ids.length > 1 ? "s" : ""}.`, "success");
+    }
+    router.refresh();
   }
 
   async function removeOpp(id: string, name: string) {
@@ -157,12 +220,36 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
         </label>
       </div>
 
+      {selected.size > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 px-3 py-2 text-sm text-blue-700 dark:text-blue-300">
+          <span className="font-medium">{selected.size} selected</span>
+          <span className="hidden text-[13px] opacity-80 md:inline">shift-click extends · ctrl-click toggles · Esc clears</span>
+          <div className="flex-1" />
+          <button
+            onClick={removeSelected}
+            disabled={bulkBusy}
+            className="inline-flex items-center gap-1.5 rounded-md border border-red-200 dark:border-red-900 bg-white dark:bg-stone-900 px-2.5 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-60"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> {bulkBusy ? "Deleting…" : "Delete selected"}
+          </button>
+          <button
+            onClick={() => { setSelected(new Set()); anchorRef.current = null; }}
+            className="rounded-md px-2 py-1 text-sm underline-offset-2 hover:underline"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-800">
         <table className="w-full min-w-[720px] table-fixed border-collapse">
           <thead>
             <tr className="bg-stone-50 dark:bg-stone-800/50 text-left text-[13px] text-stone-500 dark:text-stone-400">
-              <Th w="30%" active={sort === "company"} dir="ascending" onClick={() => setSort("company")}>Company</Th>
-              <th className="hidden px-3 py-2.5 font-medium sm:table-cell" style={{ width: "14%" }}>Location</th>
+              <th className="px-3 py-2.5" style={{ width: "4%" }}>
+                <HeaderCheckbox rows={rows} selected={selected} onToggle={toggleAllVisible} />
+              </th>
+              <Th w="27%" active={sort === "company"} dir="ascending" onClick={() => setSort("company")}>Company</Th>
+              <th className="hidden px-3 py-2.5 font-medium sm:table-cell" style={{ width: "13%" }}>Location</th>
               <Th w="8%" active={sort === "fit"} dir="descending" onClick={() => setSort("fit")}>Fit</Th>
               <Th w="10%" active={sort === "posted"} dir="descending" onClick={() => setSort("posted")} hideBelow="md">Posted</Th>
               <Th w="14%" active={sort === "deadline"} dir="ascending" onClick={() => setSort("deadline")}>Window</Th>
@@ -172,10 +259,17 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
           </thead>
           <tbody>
             {rows.map((o) => (
-              <Row key={o.id} o={o} onStatus={setOppStatus} onDelete={removeOpp} />
+              <Row
+                key={o.id}
+                o={o}
+                onStatus={setOppStatus}
+                onDelete={removeOpp}
+                isSelected={selected.has(o.id)}
+                onSelect={handleSelect}
+              />
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-8 text-center text-sm text-stone-500 dark:text-stone-400">No roles match these filters.</td></tr>
+              <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-stone-500 dark:text-stone-400">No roles match these filters.</td></tr>
             )}
           </tbody>
         </table>
@@ -209,16 +303,66 @@ function Th({ w, active, dir, onClick, hideBelow, children }: {
   );
 }
 
-function Row({ o, onStatus, onDelete }: {
+// The header checkbox reflects the VISIBLE rows: checked when all are
+// selected, indeterminate when only some are.
+function HeaderCheckbox({ rows, selected, onToggle }: {
+  rows: Opportunity[];
+  selected: Set<string>;
+  onToggle: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const all = rows.length > 0 && rows.every((r) => selected.has(r.id));
+  const some = rows.some((r) => selected.has(r.id));
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = some && !all;
+  }, [some, all]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={all}
+      onChange={onToggle}
+      aria-label="Select all visible roles"
+      className="h-4 w-4 cursor-pointer accent-stone-700 dark:accent-stone-300"
+    />
+  );
+}
+
+function Row({ o, onStatus, onDelete, isSelected, onSelect }: {
   o: Opportunity;
   onStatus: (id: string, s: OppStatus) => void;
   onDelete: (id: string, name: string) => void;
+  isSelected: boolean;
+  onSelect: (id: string, e: { shiftKey: boolean }) => void;
 }) {
   const win = windowInfo(o);
   const dot = o.eligibility_flag === "review" ? "bg-amber-500" : "bg-emerald-500";
   const done = ["rejected", "withdrawn", "closed"].includes(o.status);
+  // Ctrl/cmd- and shift-clicks anywhere on the row (outside its controls)
+  // select instead of doing nothing — file-manager style.
+  function rowClick(e: React.MouseEvent) {
+    if (!e.ctrlKey && !e.metaKey && !e.shiftKey) return;
+    if ((e.target as HTMLElement).closest("a,button,select,input")) return;
+    e.preventDefault();
+    onSelect(o.id, e);
+  }
   return (
-    <tr className={`border-t border-stone-200 dark:border-stone-800 align-middle ${done ? "opacity-50" : ""}`}>
+    <tr
+      onClick={rowClick}
+      onMouseDown={(e) => e.shiftKey && e.preventDefault()}
+      className={`border-t border-stone-200 dark:border-stone-800 align-middle ${done ? "opacity-50" : ""} ${isSelected ? "bg-blue-50/60 dark:bg-blue-950/30" : ""}`}
+    >
+      <td className="px-3 py-2.5">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => {}}
+          onClick={(e) => onSelect(o.id, e)}
+          onMouseDown={(e) => e.shiftKey && e.preventDefault()}
+          aria-label={`Select ${o.company_name_raw || o.title}`}
+          className="h-4 w-4 cursor-pointer accent-stone-700 dark:accent-stone-300"
+        />
+      </td>
       <td className="px-3 py-2.5">
         <div className="flex items-start gap-2">
           <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} title={o.eligibility_flag === "review" ? "Review" : "Eligible"} />
