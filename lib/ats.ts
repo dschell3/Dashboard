@@ -25,16 +25,65 @@ export function isPullable(c: AtsCompany) {
   return !!c.ats_slug && !!c.ats_type && PULLABLE_TYPES.includes(c.ats_type);
 }
 
+// Some boards (Workday tenants especially) sit behind bot protection that
+// rejects requests without a browser-like User-Agent — a bare server fetch
+// gets a 403 while the same request from a browser succeeds.
+const BROWSER_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
 async function fetchJson(url: string, init?: RequestInit, ms = 9000): Promise<any> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   try {
-    const res = await fetch(url, { ...init, signal: ctrl.signal, cache: "no-store" });
+    const res = await fetch(url, {
+      ...init,
+      headers: { ...BROWSER_HEADERS, ...(init?.headers || {}) },
+      signal: ctrl.signal,
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Seniority markers that disqualify a title outright. Full-board scans
+// (Ashby) would otherwise import senior roles at focus companies — location
+// (30) + focus (25) clears the import threshold on the name alone.
+const SENIOR_RE =
+  /\b(senior|sr\.?|staff|principal|lead|director|manager|mgr\.?|vp|vice president|head of|chief|distinguished|fellow|architect)\b/i;
+
+export function looksSenior(title: string): boolean {
+  return SENIOR_RE.test(title || "");
+}
+
+// Intern-shaped titles. Word-bounded so "internal" does NOT match — this
+// matters because Workday's searchText matches posting DESCRIPTIONS too, so a
+// search for "intern" happily returns "Internal Audit" and senior roles whose
+// description mentions "internal teams".
+const INTERN_TITLE_RE =
+  /\bintern(ship)?s?\b|\bco-?op\b|\bcoop\b|\bstudent\b|\buniversity\b|\bnew grad(uate)?\b|\bearly career\b/i;
+
+export function looksInternTitle(title: string): boolean {
+  return INTERN_TITLE_RE.test(title || "");
+}
+
+// Prefix shared by every external_id a company's ATS pull can produce —
+// used to find rows from PREVIOUS pulls that the current pull no longer
+// returned (vanished postings). Mirrors the id formats in the adapters.
+export function externalIdPrefix(c: AtsCompany): string | null {
+  const slug = (c.ats_slug || "").trim();
+  if (!slug || !c.ats_type) return null;
+  if (c.ats_type === "workday") {
+    const sep = slug.indexOf("/");
+    const tenant = (sep >= 0 ? slug.slice(0, sep) : slug).split(".")[0];
+    return `ats:workday:${tenant}:`;
+  }
+  return `ats:${c.ats_type}:${slug}:`;
 }
 
 const iso = (s: any): number | null => {
@@ -140,17 +189,21 @@ async function fromWorkday(company: string, slug: string): Promise<Listing[]> {
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ appliedFacets: {}, limit: 50, offset: 0, searchText: "intern" }),
   });
-  return (data.jobPostings || []).map((j: any) =>
-    mk({
-      externalId: `ats:workday:${tenant}:${(j.bulletFields && j.bulletFields[0]) || j.externalPath}`,
-      company,
-      title: j.title || "",
-      locations: j.locationsText ? [j.locationsText] : [],
-      datePosted: postedOnToUnix(j.postedOn),
-      url: j.externalPath ? `https://${host}/en-US/${site}${j.externalPath}` : "",
-      detailRef: j.externalPath || null,
-    })
-  );
+  return (data.jobPostings || [])
+    // The search matches descriptions too ("internal…"), so require an
+    // intern-shaped TITLE before trusting a Workday result.
+    .filter((j: any) => looksInternTitle(j.title || ""))
+    .map((j: any) =>
+      mk({
+        externalId: `ats:workday:${tenant}:${(j.bulletFields && j.bulletFields[0]) || j.externalPath}`,
+        company,
+        title: j.title || "",
+        locations: j.locationsText ? [j.locationsText] : [],
+        datePosted: postedOnToUnix(j.postedOn),
+        url: j.externalPath ? `https://${host}/en-US/${site}${j.externalPath}` : "",
+        detailRef: j.externalPath || null,
+      })
+    );
 }
 
 export async function fetchCompanyListings(c: AtsCompany): Promise<Listing[]> {

@@ -26,9 +26,10 @@ export default function ImportButton() {
     try {
       const ats = await runOne("/api/import-ats");
       const failed = (ats.results || []).filter((r: any) => r.error);
-      toast(`Company boards: ${ats.added} new, ${ats.updated} refreshed`, "success");
+      const closedNote = ats.closed ? `, ${ats.closed} no longer listed` : "";
+      toast(`Company boards: ${ats.added} new, ${ats.updated} refreshed${closedNote}`, "success");
       if (failed.length) {
-        toast(`Unreachable: ${failed.map((r: any) => r.company).join(", ")}`, "error");
+        toast(`Unreachable: ${failed.map((r: any) => `${r.company} (${r.error})`).join(", ")}`, "error");
       }
     } catch (e: any) {
       toast(`Company boards: ${e.message}`, "error");
@@ -41,7 +42,7 @@ export default function ImportButton() {
     <button
       onClick={run}
       disabled={loading}
-      className="inline-flex items-center gap-1.5 rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-800 disabled:opacity-60"
+      className="inline-flex items-center gap-1.5 rounded-md bg-stone-900 dark:bg-stone-100 px-3 py-1.5 text-sm text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-60"
     >
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
       {loading ? "Importing…" : "Import roles"}
