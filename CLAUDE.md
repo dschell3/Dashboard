@@ -39,7 +39,16 @@ flag eligibility, pull live postings automatically, and surface deadlines.
     request per board); small boards are scanned in full (this matters:
     Inductive's "Software Technical Analyst" is a target role without "intern"
     in the title). ATS pulls require metro-or-remote location before scoring
-    (focus bonus alone would otherwise pass far-away roles).
+    (focus bonus alone would otherwise pass far-away roles). Quality gates
+    (`lib/ats.ts`, tests in `lib/ats.test.ts`): seniority-marked titles are
+    dropped (`looksSenior`); Workday results additionally need an
+    intern-shaped title (`looksInternTitle` — word-bounded, so "internal"
+    never matches; Workday's search matches descriptions). ATS fetches send a
+    browser-like User-Agent (Workday bot protection 403s bare fetches).
+    **Ghost cleanup:** after a successful board pull, that company's
+    previously imported rows missing from the pull are set to `closed` — but
+    only rows still on the untouched default status `interested`, so
+    user-driven pipeline state is never auto-closed.
   - Capture bookmarklet (`/capture`, `lib/capture.ts`): sends only URL, title,
     and selection; ALL parsing stays server/app-side so installed bookmarklets
     never go stale. Prefills `/opportunities/new` via `?u=&t=&s=`.
@@ -160,5 +169,11 @@ flag eligibility, pull live postings automatically, and surface deadlines.
   `lib/scoring.ts`, `lib/deadline.ts`, `lib/capture.ts`, `lib/gate.ts`).
 - UI feedback goes through the shared `toast()` in `components/Toaster.tsx`
   (mounted once in the root layout) — not transient inline text.
+- Dark mode is class-based (`ThemeToggle` in the nav, localStorage +
+  pre-paint inline script in the root layout, system preference on first
+  visit). New UI needs `dark:` variants — the palette maps stone light values
+  to their dark counterparts and chip tones to `-950/-300` pairs.
+- Opportunities table has a Posted column ("Newest" sort, newest first,
+  undated last; last-week postings render as a green relative-age chip).
 - Git history was reset with a force-push (nested-folder cleanup); shallow
   history is expected. Windows checkout produces CRLF warnings — harmless.
