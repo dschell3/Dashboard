@@ -26,9 +26,10 @@ export default function ImportButton() {
     try {
       const ats = await runOne("/api/import-ats");
       const failed = (ats.results || []).filter((r: any) => r.error);
-      toast(`Company boards: ${ats.added} new, ${ats.updated} refreshed`, "success");
+      const closedNote = ats.closed ? `, ${ats.closed} no longer listed` : "";
+      toast(`Company boards: ${ats.added} new, ${ats.updated} refreshed${closedNote}`, "success");
       if (failed.length) {
-        toast(`Unreachable: ${failed.map((r: any) => r.company).join(", ")}`, "error");
+        toast(`Unreachable: ${failed.map((r: any) => `${r.company} (${r.error})`).join(", ")}`, "error");
       }
     } catch (e: any) {
       toast(`Company boards: ${e.message}`, "error");

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient, upsertGrouped } from "@/lib/db";
 import { buildProfile } from "@/lib/profile";
 import { scoreListing, type Listing } from "@/lib/scoring";
-import { fetchCompanyListings, enrichListing, isPullable, pool, type AtsCompany } from "@/lib/ats";
+import { fetchCompanyListings, enrichListing, isPullable, pool, looksSenior, externalIdPrefix, type AtsCompany } from "@/lib/ats";
 import { safeUrl } from "@/lib/format";
 import { extractDeadline, stripHtml, plausibleDeadline } from "@/lib/deadline";
 import { safeEqual } from "@/lib/gate";
@@ -50,6 +50,9 @@ async function runImport() {
         // Detail fetches cost one request per posting, so cap them per company.
         let enrichBudget = 5;
         for (const l of listings) {
+          // Full-board scans surface senior roles that focus+location points
+          // alone would push past the threshold — drop them by title.
+          if (looksSenior(l.title)) continue;
           if (!isRelevant(l, profile.targetLocations, profile.remoteOk)) continue;
           const { fitScore, eligibility, breakdown } = scoreListing(l, profile);
           if (fitScore < THRESHOLD || eligibility === "blocked") continue;
@@ -91,7 +94,16 @@ async function runImport() {
             ...(deadline ? { deadline_at: deadline, is_rolling: false } : {}),
           });
         }
-        return { company: c.name, ats: c.ats_type, found: listings.length, kept, deadlines };
+        return {
+          company: c.name,
+          ats: c.ats_type,
+          found: listings.length,
+          kept,
+          deadlines,
+          // Everything the board still lists (pre-filter), for ghost cleanup.
+          prefix: externalIdPrefix(c as AtsCompany),
+          liveIds: listings.map((l) => l.externalId.slice(0, 500)),
+        };
       } catch (e: any) {
         return { company: c.name, ats: c.ats_type, found: 0, kept: 0, error: e?.message || "fetch failed" };
       }
@@ -104,10 +116,11 @@ async function runImport() {
 
     const { data: existing } = await supabase
       .from("opportunities")
-      .select("external_id")
+      .select("id, external_id, status")
       .like("external_id", "ats:%")
       .limit(10000);
-    const known = new Set((existing || []).map((r: any) => r.external_id));
+    const existingRows = existing || [];
+    const known = new Set(existingRows.map((r: any) => r.external_id));
     const added = unique.filter((r) => !known.has(r.external_id)).length;
 
     // Existing rows keep the work_mode you may have set by hand on the detail
@@ -120,8 +133,36 @@ async function runImport() {
 
     await upsertGrouped(supabase, "opportunities", finalRows, "external_id");
 
+    // Ghost cleanup: a posting imported earlier that the board no longer
+    // lists is closed — but ONLY rows still on the untouched default status
+    // ('interested'), so anything you moved through the pipeline is never
+    // auto-closed. Skipped entirely for boards whose fetch failed.
+    let closed = 0;
+    for (const r of results as any[]) {
+      if (r.error || !r.prefix || !r.liveIds) continue;
+      const live = new Set(r.liveIds);
+      const ghosts = existingRows.filter(
+        (row: any) =>
+          typeof row.external_id === "string" &&
+          row.external_id.startsWith(r.prefix) &&
+          !live.has(row.external_id) &&
+          row.status === "interested"
+      );
+      if (ghosts.length === 0) continue;
+      const { error } = await supabase
+        .from("opportunities")
+        .update({ status: "closed", date_updated: new Date().toISOString() })
+        .in("id", ghosts.map((g: any) => g.id));
+      if (!error) {
+        r.closed = ghosts.length;
+        closed += ghosts.length;
+      }
+    }
+
     const scanned = results.reduce((n, r) => n + r.found, 0);
-    return NextResponse.json({ added, updated: unique.length - added, scanned, results });
+    // liveIds can be hundreds of entries per board — not useful to callers.
+    const publicResults = (results as any[]).map(({ liveIds, prefix, ...rest }) => rest);
+    return NextResponse.json({ added, updated: unique.length - added, closed, scanned, results: publicResults });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Company import failed" }, { status: 500 });
   }
