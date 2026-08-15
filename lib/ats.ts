@@ -181,15 +181,21 @@ async function fromWorkday(company: string, slug: string): Promise<Listing[]> {
   const site = slug.slice(sep + 1);
   const tenant = host.split(".")[0];
   // Workday boards are huge, so ask its search for intern roles server-side.
-  // limit 50 (Workday's max page size) — still a single request per board,
-  // but big companies like HPE/Micron can exceed 20 intern postings and the
-  // overflow was silently dropped.
-  const data = await fetchJson(`https://${host}/wday/cxs/${tenant}/${site}/jobs`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ appliedFacets: {}, limit: 50, offset: 0, searchText: "intern" }),
-  });
-  return (data.jobPostings || [])
+  // The CXS jobs endpoint rejects limit > 20 with HTTP 400 (this broke all
+  // three boards when we tried limit 50), so page through at 20 — capped at
+  // 3 pages per board to keep the request volume deliberate.
+  const postings: any[] = [];
+  for (let offset = 0; offset < 60; offset += 20) {
+    const data = await fetchJson(`https://${host}/wday/cxs/${tenant}/${site}/jobs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ appliedFacets: {}, limit: 20, offset, searchText: "intern" }),
+    });
+    const page = data.jobPostings || [];
+    postings.push(...page);
+    if (page.length < 20) break;
+  }
+  return postings
     // The search matches descriptions too ("internal…"), so require an
     // intern-shaped TITLE before trusting a Workday result.
     .filter((j: any) => looksInternTitle(j.title || ""))
