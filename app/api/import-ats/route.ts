@@ -47,6 +47,7 @@ async function runImport() {
         const listings = await fetchCompanyListings(c as AtsCompany);
         let kept = 0;
         let deadlines = 0;
+        const keptIds: string[] = [];
         // Detail fetches cost one request per posting, so cap them per company.
         let enrichBudget = 5;
         for (const l of listings) {
@@ -73,6 +74,7 @@ async function runImport() {
           if (deadline) deadlines++;
 
           const isRemote = l.locations.some((x) => x.toLowerCase().includes("remote"));
+          keptIds.push(l.externalId.slice(0, 500));
           rows.push({
             external_id: l.externalId.slice(0, 500),
             company_name_raw: (l.company || "").slice(0, 200),
@@ -100,9 +102,11 @@ async function runImport() {
           found: listings.length,
           kept,
           deadlines,
-          // Everything the board still lists (pre-filter), for ghost cleanup.
+          // Only ids that still pass the CURRENT import rules count as alive
+          // for cleanup — a previously imported row that today's rules would
+          // reject (vanished, senior-titled, no longer relevant) is a ghost.
           prefix: externalIdPrefix(c as AtsCompany),
-          liveIds: listings.map((l) => l.externalId.slice(0, 500)),
+          liveIds: keptIds,
         };
       } catch (e: any) {
         return { company: c.name, ats: c.ats_type, found: 0, kept: 0, error: e?.message || "fetch failed" };
