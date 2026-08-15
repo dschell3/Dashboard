@@ -4,11 +4,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, ArrowUpDown, ChevronDown, Clock, RefreshCw, Calendar, Trash2, Star, ExternalLink } from "lucide-react";
 import type { Opportunity, OppStatus } from "@/lib/types";
-import { windowInfo, statusLabel, safeUrl, sourceLabel } from "@/lib/format";
+import { windowInfo, statusLabel, safeUrl, sourceLabel, postedAgo } from "@/lib/format";
 import { Chip } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
-type SortKey = "fit" | "deadline" | "company";
+type SortKey = "fit" | "deadline" | "company" | "posted";
 const STATUSES: OppStatus[] = ["interested", "preparing", "applied", "interview", "offer", "rejected", "withdrawn", "closed"];
 
 function deadlineRank(o: Opportunity) {
@@ -32,7 +32,9 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
   const [source, setSource] = useState(sp.get("source") || "all");
   const [elig, setElig] = useState(sp.get("elig") || "all");
   const [focusOnly, setFocusOnly] = useState(sp.get("focus") === "1");
-  const [sort, setSort] = useState<SortKey>(rawSort === "deadline" || rawSort === "company" ? rawSort : "fit");
+  const [sort, setSort] = useState<SortKey>(
+    rawSort === "deadline" || rawSort === "company" || rawSort === "posted" ? rawSort : "fit"
+  );
 
   // Optimistic edits live in local state; when the server sends fresh rows
   // (after an import or a save elsewhere), fold them back in.
@@ -62,9 +64,11 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
       if (focusOnly && !o.company_id) return false;
       return true;
     });
+    const postedRank = (o: Opportunity) => (o.date_posted ? new Date(o.date_posted).getTime() : -Infinity);
     out.sort((a, b) => {
       if (sort === "fit") return (b.fit_score || 0) - (a.fit_score || 0);
       if (sort === "deadline") return deadlineRank(a) - deadlineRank(b);
+      if (sort === "posted") return postedRank(b) - postedRank(a); // newest first, undated last
       return (a.company_name_raw || "").localeCompare(b.company_name_raw || "");
     });
     return out;
@@ -146,6 +150,7 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
           <ArrowUpDown className="h-4 w-4" /> Sort
           <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className={sel} aria-label="Sort by">
             <option value="fit">Fit</option>
+            <option value="posted">Newest</option>
             <option value="deadline">Deadline</option>
             <option value="company">Company</option>
           </select>
@@ -156,11 +161,12 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
         <table className="w-full min-w-[720px] table-fixed border-collapse">
           <thead>
             <tr className="bg-stone-50 text-left text-[13px] text-stone-500">
-              <Th w="34%" active={sort === "company"} dir="ascending" onClick={() => setSort("company")}>Company</Th>
-              <th className="hidden px-3 py-2.5 font-medium sm:table-cell" style={{ width: "16%" }}>Location</th>
-              <Th w="9%" active={sort === "fit"} dir="descending" onClick={() => setSort("fit")}>Fit</Th>
-              <Th w="15%" active={sort === "deadline"} dir="ascending" onClick={() => setSort("deadline")}>Window</Th>
-              <th className="px-3 py-2.5 font-medium" style={{ width: "18%" }}>Status</th>
+              <Th w="30%" active={sort === "company"} dir="ascending" onClick={() => setSort("company")}>Company</Th>
+              <th className="hidden px-3 py-2.5 font-medium sm:table-cell" style={{ width: "14%" }}>Location</th>
+              <Th w="8%" active={sort === "fit"} dir="descending" onClick={() => setSort("fit")}>Fit</Th>
+              <Th w="10%" active={sort === "posted"} dir="descending" onClick={() => setSort("posted")} hideBelow="md">Posted</Th>
+              <Th w="14%" active={sort === "deadline"} dir="ascending" onClick={() => setSort("deadline")}>Window</Th>
+              <th className="px-3 py-2.5 font-medium" style={{ width: "16%" }}>Status</th>
               <th className="px-3 py-2.5" style={{ width: "8%" }}><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
@@ -169,7 +175,7 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
               <Row key={o.id} o={o} onStatus={setOppStatus} onDelete={removeOpp} />
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-stone-500">No roles match these filters.</td></tr>
+              <tr><td colSpan={7} className="px-3 py-8 text-center text-sm text-stone-500">No roles match these filters.</td></tr>
             )}
           </tbody>
         </table>
@@ -178,17 +184,19 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
   );
 }
 
-function Th({ w, active, dir, onClick, children }: {
+function Th({ w, active, dir, onClick, hideBelow, children }: {
   w: string;
   active: boolean;
   dir: "ascending" | "descending";
   onClick: () => void;
+  hideBelow?: "sm" | "md";
   children: React.ReactNode;
 }) {
   // A real <button> so sorting works from the keyboard, with aria-sort so
   // screen readers announce the current order.
+  const hide = hideBelow === "md" ? "hidden md:table-cell" : hideBelow === "sm" ? "hidden sm:table-cell" : "";
   return (
-    <th style={{ width: w }} aria-sort={active ? dir : "none"} className="px-3 py-2.5 font-medium">
+    <th style={{ width: w }} aria-sort={active ? dir : "none"} className={`px-3 py-2.5 font-medium ${hide}`}>
       <button
         type="button"
         onClick={onClick}
@@ -237,6 +245,15 @@ function Row({ o, onStatus, onDelete }: {
       </td>
       <td className="hidden truncate px-3 py-2.5 text-sm text-stone-500 sm:table-cell">{(o.locations && o.locations[0]) || o.work_mode || "—"}</td>
       <td className="px-3 py-2.5"><Chip tone="blue">{o.fit_score ?? 0}</Chip></td>
+      <td className="hidden whitespace-nowrap px-3 py-2.5 md:table-cell">
+        {(() => {
+          const p = postedAgo(o.date_posted);
+          if (!p) return <span className="text-sm text-stone-400">—</span>;
+          return p.recent
+            ? <Chip tone="success">{p.text}</Chip>
+            : <span className="text-sm text-stone-500">{p.text}</span>;
+        })()}
+      </td>
       <td className="px-3 py-2.5">
         {win.kind === "due" ? <Chip tone="warning"><Clock className="h-3 w-3" />{win.text}</Chip>
           : win.kind === "opens" ? <Chip tone="info"><Calendar className="h-3 w-3" />{win.text}</Chip>

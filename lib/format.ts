@@ -53,6 +53,21 @@ export function windowInfo(o: Opportunity): WindowInfo {
   return { text: "Rolling", tone: "neutral", kind: "rolling" };
 }
 
+// Relative age of a posting ("today", "3d ago", then a short date). `recent`
+// marks the first week — the window where applying early matters most.
+export function postedAgo(iso: string | null): { text: string; recent: boolean } | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return null;
+  const days = Math.floor((Date.now() - t) / 86400000);
+  if (days <= 0) return { text: "today", recent: true };
+  if (days < 14) return { text: `${days}d ago`, recent: days <= 7 };
+  return {
+    text: new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    recent: false,
+  };
+}
+
 export function sourceLabel(s: string | null) {
   if (s === "swelist") return "swelist";
   if (s === "ats") return "company feed";
