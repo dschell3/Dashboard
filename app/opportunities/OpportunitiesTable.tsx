@@ -9,7 +9,7 @@ import { Chip } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
 type SortKey = "fit" | "deadline" | "company" | "posted";
-const STATUSES: OppStatus[] = ["interested", "preparing", "applied", "interview", "offer", "rejected", "withdrawn", "closed"];
+const STATUSES: OppStatus[] = ["interested", "preparing", "applied", "interview", "offer", "accepted", "rejected", "withdrawn", "closed"];
 
 function deadlineRank(o: Opportunity) {
   if (o.deadline_at) return (new Date(o.deadline_at + "T00:00:00").getTime() - Date.now()) / 86400000;

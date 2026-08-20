@@ -75,7 +75,16 @@ flag eligibility, pull live postings automatically, and surface deadlines.
   deadline due today still counts; overdue active roles surface first in
   Needs Attention, and every Needs Attention bucket filters to active
   statuses. Tasks panel shows incomplete `requirements` ordered by `due_at`
-  (nulls last) and supports check-off.
+  (nulls last) and supports check-off. Bottom of the dashboard: application
+  funnel (`components/FunnelSankey.tsx`, pure SVG, no deps) — chain
+  applications → interviews → offers → accepted (sequential blue ramp,
+  accepted emerald) with rejected / withdrawn / no-answer branches in status
+  hues; counts derive from current statuses (later stages imply earlier ones,
+  so each stage includes everything downstream); every node direct-labeled,
+  ribbons carry `<title>` tooltips, hidden until something reaches Applied.
+  Status enum includes `accepted` (after `offer`) across `lib/types.ts`, both
+  status dropdowns, and the PATCH whitelist; creation/import statuses are
+  unchanged.
 - **.ics export:** RFC 5545 — exclusive DTEND (+1 day), lines folded by
   UTF-8 octets, active statuses only.
 - **Reminders** (`/api/reminders`): Resend digest of active roles due ≤7 days

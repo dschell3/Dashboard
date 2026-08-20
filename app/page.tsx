@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/db";
 import Nav from "@/components/Nav";
 import TasksPanel, { type TaskItem } from "@/components/TasksPanel";
 import ResumeCard, { type ResumeMeta } from "@/components/ResumeCard";
+import FunnelSankey, { type FunnelCounts } from "@/components/FunnelSankey";
 import { Card, StatCard, Chip } from "@/components/ui";
 import { windowInfo, statusLabel, initials, startOfTodayMs } from "@/lib/format";
 import type { Opportunity } from "@/lib/types";
@@ -60,6 +61,20 @@ export default async function DashboardPage() {
   const attention = [...overdueItems, ...deadlineItems, ...opensItems, ...rollingTop].slice(0, 5);
 
   const pipelineCounts = PIPELINE.map((s) => ({ status: s, count: opps.filter((o) => o.status === s).length }));
+
+  // Application funnel: built from current statuses (offer/accepted imply the
+  // earlier stages, so each stage's count includes everything downstream).
+  const byStatus = (s: string) => opps.filter((o) => o.status === s).length;
+  const funnel: FunnelCounts = {
+    noAnswer: byStatus("applied"),
+    interviews: byStatus("interview") + byStatus("offer") + byStatus("accepted"),
+    offers: byStatus("offer") + byStatus("accepted"),
+    accepted: byStatus("accepted"),
+    rejected: byStatus("rejected"),
+    withdrawn: byStatus("withdrawn"),
+    apps: 0,
+  };
+  funnel.apps = funnel.noAnswer + funnel.interviews + funnel.rejected + funnel.withdrawn;
 
   const { data: reqData } = await supabase
     .from("requirements")
@@ -143,7 +158,7 @@ export default async function DashboardPage() {
         <ResumeCard meta={resumeMeta} />
       </Card>
 
-      <Card>
+      <Card className="mb-5">
         <h2 className="mb-3 text-base font-medium">Pipeline</h2>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           {pipelineCounts.map((p) => (
@@ -153,6 +168,17 @@ export default async function DashboardPage() {
             </div>
           ))}
         </div>
+      </Card>
+
+      <Card>
+        <h2 className="mb-3 text-base font-medium">Application funnel</h2>
+        {funnel.apps === 0 ? (
+          <p className="py-2 text-sm text-stone-500 dark:text-stone-400">
+            The funnel appears once a role moves to Applied — it tracks applications through interviews, offers, and outcomes.
+          </p>
+        ) : (
+          <FunnelSankey counts={funnel} />
+        )}
       </Card>
     </>
   );
