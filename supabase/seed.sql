@@ -34,19 +34,21 @@ values
 on conflict (name) do nothing;
 
 -- ---------- Your preferences + scoring weights (only if none exist yet) ----------
+-- (nearby_locations comes from migration 004 — apply migrations before seeding)
 insert into preferences
-  (target_locations, remote_ok, keywords, role_types, season, excluded_sectors, excluded_keywords, needs_sponsorship, bg_risk_tolerance, scoring_weights)
+  (target_locations, nearby_locations, remote_ok, keywords, role_types, season, excluded_sectors, excluded_keywords, needs_sponsorship, bg_risk_tolerance, scoring_weights)
 select
   array['Elk Grove','Sacramento','Folsom','Rancho Cordova','Roseville','Rocklin','Davis'],
+  array['San Francisco','SF','Bay Area','San Jose','Santa Clara','Sunnyvale','Mountain View','Palo Alto','Menlo Park','Redwood City','San Mateo','Foster City','South San Francisco','Oakland','Berkeley','Emeryville','Fremont','Milpitas','Cupertino','San Bruno','Burlingame','Pleasanton','San Ramon','Dublin, CA'],
   true,
   array['python','flask','django','sql','postgres','database','backend','full-stack','web','data','analytics','qa','test','software','javascript','react','node','drupal'],
   array['internship','co-op'],
-  'Summer 2026',
+  'Summer 2027',
   array['defense','finance','banking','law enforcement','corrections'],
   array['security clearance','clearance','defense','lockheed','raytheon','northrop','sierra nevada','l3 harris','kratos','bank','credit union','goldman','jpmorgan','morgan stanley','fintech','police','sheriff','corrections','classified'],
   false,
   'medium',
-  '{"location":30,"remote":18,"focus":25,"keyword_each":6,"keyword_cap":24,"role":12,"fresh_14d":10,"fresh_30d":6}'::jsonb
+  '{"location":30,"nearby":20,"remote":18,"focus":25,"keyword_each":6,"keyword_cap":24,"role":12,"fresh_14d":10,"fresh_30d":6}'::jsonb
 where not exists (select 1 from preferences);
 
 -- ---------- Starter opportunities for focus companies ----------

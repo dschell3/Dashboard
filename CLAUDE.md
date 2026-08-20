@@ -6,14 +6,20 @@ Vercel with cron jobs. Repo: `dschell3/Dashboard`, auto-deploys `main`.
 
 ## Functional requirements (source of truth)
 
-**Purpose:** track Summer 2026 internship opportunities, score them by fit,
+**Purpose:** track Summer 2027 internship opportunities, score them by fit,
 flag eligibility, pull live postings automatically, and surface deadlines.
+(Pivoted from Summer 2026 in Aug 2026 — SimplifyJobs starts a new repo each
+season, so the swelist feed URL gets bumped per cycle.)
 
 - **Fit scoring** (`lib/scoring.ts`): rule-based, transparent, weights stored in
   `preferences.scoring_weights`. Every stored score keeps its breakdown
   (`fit_breakdown` jsonb) and the detail page shows it. Signals: target-metro
-  location (30), remote (18), focus-company match (25), title keywords
-  (6 each, cap 24), intern/co-op role (12), freshness (10/6). Import threshold 35.
+  location (30), nearby region (20 — Bay Area, `preferences.nearby_locations`
+  with a code fallback in `lib/profile.ts`; below metro, above remote by
+  design so Sacramento still ranks first), remote (18), focus-company match
+  (25), title keywords (6 each, cap 24), intern/co-op role (12), freshness
+  (10/6). Import threshold 35. Location tokens match whole-word
+  (`containsWordExact`) so the "SF" token can't hit "Pittsfield".
 - **Eligibility is separate from fit** and is a core requirement, not
   decoration. The user's search excludes sectors with strict background-check
   barriers (defense/clearance, banking/finance, law enforcement/corrections).
@@ -30,7 +36,7 @@ flag eligibility, pull live postings automatically, and surface deadlines.
   Unit tests in `lib/scoring.test.ts` pin the behavior.
 - **Imports** (three sources, all upsert on `external_id`, all preserve
   user-set state):
-  - swelist feed (`/api/import-swelist`): SimplifyJobs Summer2026 JSON.
+  - swelist feed (`/api/import-swelist`): SimplifyJobs Summer2027 JSON.
   - Per-company ATS pulls (`/api/import-ats`, `lib/ats.ts`): Ashby (Inductive
     Automation, Scribd, Instructure/Parchment), SmartRecruiters (Solidigm),
     Workday (HPE, Micron, VSP). Config lives in `companies.ats_type` +
@@ -39,8 +45,8 @@ flag eligibility, pull live postings automatically, and surface deadlines.
     on anything larger — up to 3 pages per board); small boards are scanned
     in full (this matters:
     Inductive's "Software Technical Analyst" is a target role without "intern"
-    in the title). ATS pulls require metro-or-remote location before scoring
-    (focus bonus alone would otherwise pass far-away roles). Quality gates
+    in the title). ATS pulls require metro, nearby-region, or remote location
+    before scoring (focus bonus alone would otherwise pass far-away roles). Quality gates
     (`lib/ats.ts`, tests in `lib/ats.test.ts`): seniority-marked titles are
     dropped (`looksSenior`); Workday results additionally need an
     intern-shaped title (`looksInternTitle` — word-bounded, so "internal"
@@ -191,8 +197,10 @@ flag eligibility, pull live postings automatically, and surface deadlines.
   `ANTHROPIC_BASE_URL` for tests). **Never commit `.env.local`; never print
   key values.** `NEXT_PUBLIC_*` values are inlined at build time — a runtime
   override without a rebuild does nothing.
-- Migrations 001–003 applied in order via the Supabase SQL editor; 003 adds
-  `opportunities.description`, `resumes`, `tailored_resumes`.
+- Migrations 001–004 applied in order via the Supabase SQL editor; 003 adds
+  `opportunities.description`, `resumes`, `tailored_resumes`; 004 adds
+  `preferences.nearby_locations` (Bay Area tier) and flips the season prefs
+  to Summer 2027.
 - Crons (UTC): swelist 14:00, ATS 14:15, reminders 14:30 (`vercel.json`).
 - Validation: `npm install`, `npx tsc --noEmit`, `npx next build` (placeholder
   env vars suffice for building), `npm test` (Vitest — unit tests for

@@ -105,7 +105,7 @@ function postedOnToUnix(s?: string | null): number | null {
 }
 
 function mk(partial: Omit<Listing, "season" | "sponsorship" | "source">): Listing {
-  return { ...partial, season: "Summer 2026", sponsorship: null, source: "ats" };
+  return { ...partial, season: "Summer 2027", sponsorship: null, source: "ats" };
 }
 
 async function fromGreenhouse(company: string, slug: string): Promise<Listing[]> {
