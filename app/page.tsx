@@ -23,7 +23,10 @@ export default async function DashboardPage() {
     .select("*")
     .order("fit_score", { ascending: false });
   const opps: Opportunity[] = oppsData || [];
-  const visible = opps.filter((o) => o.eligibility_flag !== "blocked");
+  // Blocked-eligibility and not-relevant roles stay out of every dashboard
+  // surface (top matches, needs attention); explicit status counts are
+  // unaffected since not_relevant isn't in any of them.
+  const visible = opps.filter((o) => o.eligibility_flag !== "blocked" && o.status !== "not_relevant");
 
   // Date windows measure from the START of today, so a deadline due today
   // still counts as due this week (and never silently disappears).
@@ -90,7 +93,7 @@ export default async function DashboardPage() {
     opportunity_id: t.opportunity_id || null,
   }));
 
-  const hiddenCount = opps.length - visible.length;
+  const hiddenCount = opps.filter((o) => o.eligibility_flag === "blocked").length;
 
   // Resume on file (for the tailoring feature). A missing table (migration
   // 003 not applied yet) errors — treat as "no resume" so the card degrades.

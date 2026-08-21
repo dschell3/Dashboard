@@ -12,7 +12,7 @@ import { Chip, Card } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import ResumePanel, { type TailoredResume } from "@/components/ResumePanel";
 
-const STATUSES = ["interested", "preparing", "applied", "interview", "offer", "accepted", "rejected", "withdrawn", "closed"];
+const STATUSES = ["interested", "preparing", "applied", "interview", "offer", "accepted", "rejected", "withdrawn", "closed", "not_relevant"];
 const REQ_TYPES = ["resume", "cover_letter", "transcript", "essay", "references", "portfolio", "online_assessment", "other"];
 const BREAKDOWN_LABELS: Record<string, string> = {
   location: "Location", focus: "Focus company", keywords: "Keywords", role: "Role type", freshness: "Freshness",

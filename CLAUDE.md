@@ -90,7 +90,14 @@ season, so the swelist feed URL gets bumped per cycle.)
   ribbons carry `<title>` tooltips, hidden until something reaches Applied.
   Status enum includes `accepted` (after `offer`) across `lib/types.ts`, both
   status dropdowns, and the PATCH whitelist; creation/import statuses are
-  unchanged.
+  unchanged. `not_relevant` is the durable "hide" for roles outside the
+  user's field (e.g. EE/CE hardware roles): deleting an imported row just
+  resurrects it on the next feed pull, but the non-clobber rule means a
+  status mark survives re-imports. Marked rows are excluded from every
+  dashboard surface and from the table's default view (visible via the
+  status filter; count noted next to the roles total), and double as
+  labeled data for future filter refinement — don't repurpose `closed`
+  (auto-set by ghost cleanup) for this.
 - **.ics export:** RFC 5545 — exclusive DTEND (+1 day), lines folded by
   UTF-8 octets, active statuses only.
 - **Reminders** (`/api/reminders`): Resend digest of active roles due ≤7 days

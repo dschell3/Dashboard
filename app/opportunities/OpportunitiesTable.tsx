@@ -9,7 +9,7 @@ import { Chip } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
 type SortKey = "fit" | "deadline" | "company" | "posted";
-const STATUSES: OppStatus[] = ["interested", "preparing", "applied", "interview", "offer", "accepted", "rejected", "withdrawn", "closed"];
+const STATUSES: OppStatus[] = ["interested", "preparing", "applied", "interview", "offer", "accepted", "rejected", "withdrawn", "closed", "not_relevant"];
 
 function deadlineRank(o: Opportunity) {
   if (o.deadline_at) return (new Date(o.deadline_at + "T00:00:00").getTime() - Date.now()) / 86400000;
@@ -73,6 +73,10 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     const out = opps.filter((o) => {
       const hay = `${o.company_name_raw || ""} ${o.title} ${(o.locations || []).join(" ")}`.toLowerCase();
       if (q && !hay.includes(q.toLowerCase().trim())) return false;
+      // Not-relevant marks are a durable "hide" (deleting imported rows just
+      // resurrects them on the next feed pull) — tucked away unless the
+      // status filter asks for them.
+      if (status === "all" && o.status === "not_relevant") return false;
       if (status !== "all" && o.status !== status) return false;
       if (source !== "all" && (o.source || "manual") !== source) return false;
       if (elig !== "all" && (o.eligibility_flag || "clear") !== elig) return false;
@@ -172,7 +176,11 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     <div>
       <div className="mb-2.5 flex items-baseline justify-between">
         <h1 className="text-lg font-medium">All opportunities</h1>
-        <span className="text-[13px] text-stone-500 dark:text-stone-400">{rows.length} of {opps.length} roles</span>
+        <span className="text-[13px] text-stone-500 dark:text-stone-400">
+          {rows.length} of {opps.length} roles
+          {status === "all" && opps.some((o) => o.status === "not_relevant") &&
+            ` · ${opps.filter((o) => o.status === "not_relevant").length} not relevant hidden`}
+        </span>
       </div>
 
       <div className="relative mb-2.5">
@@ -337,7 +345,7 @@ function Row({ o, onStatus, onDelete, isSelected, onSelect }: {
 }) {
   const win = windowInfo(o);
   const dot = o.eligibility_flag === "review" ? "bg-amber-500" : "bg-emerald-500";
-  const done = ["rejected", "withdrawn", "closed"].includes(o.status);
+  const done = ["rejected", "withdrawn", "closed", "not_relevant"].includes(o.status);
   // Ctrl/cmd- and shift-clicks anywhere on the row (outside its controls)
   // select instead of doing nothing — file-manager style.
   function rowClick(e: React.MouseEvent) {
