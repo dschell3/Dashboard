@@ -73,10 +73,6 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     const out = opps.filter((o) => {
       const hay = `${o.company_name_raw || ""} ${o.title} ${(o.locations || []).join(" ")}`.toLowerCase();
       if (q && !hay.includes(q.toLowerCase().trim())) return false;
-      // Not-relevant marks are a durable "hide" (deleting imported rows just
-      // resurrects them on the next feed pull) — tucked away unless the
-      // status filter asks for them.
-      if (status === "all" && o.status === "not_relevant") return false;
       if (status !== "all" && o.status !== status) return false;
       if (source !== "all" && (o.source || "manual") !== source) return false;
       if (elig !== "all" && (o.eligibility_flag || "clear") !== elig) return false;
@@ -85,6 +81,13 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     });
     const postedRank = (o: Opportunity) => (o.date_posted ? new Date(o.date_posted).getTime() : -Infinity);
     out.sort((a, b) => {
+      // Not-relevant marks sink to the end under every sort — marking a row
+      // drops it to the bottom immediately (optimistic update re-sorts), and
+      // it stays there. It's a durable de-prioritization: deleting an
+      // imported row just resurrects it on the next feed pull, but imports
+      // never overwrite a user-set status.
+      const sink = Number(a.status === "not_relevant") - Number(b.status === "not_relevant");
+      if (sink !== 0) return sink;
       if (sort === "fit") return (b.fit_score || 0) - (a.fit_score || 0);
       if (sort === "deadline") return deadlineRank(a) - deadlineRank(b);
       if (sort === "posted") return postedRank(b) - postedRank(a); // newest first, undated last
@@ -176,11 +179,7 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     <div>
       <div className="mb-2.5 flex items-baseline justify-between">
         <h1 className="text-lg font-medium">All opportunities</h1>
-        <span className="text-[13px] text-stone-500 dark:text-stone-400">
-          {rows.length} of {opps.length} roles
-          {status === "all" && opps.some((o) => o.status === "not_relevant") &&
-            ` · ${opps.filter((o) => o.status === "not_relevant").length} not relevant hidden`}
-        </span>
+        <span className="text-[13px] text-stone-500 dark:text-stone-400">{rows.length} of {opps.length} roles</span>
       </div>
 
       <div className="relative mb-2.5">
