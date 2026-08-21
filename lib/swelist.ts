@@ -1,9 +1,10 @@
 import type { Listing } from "./scoring";
 
-// Machine-readable feed behind swelist.com: the SimplifyJobs / Summer2026-Internships
-// repo, refreshed daily. (~12MB JSON; lives on the dev branch.)
+// Machine-readable feed behind swelist.com: the SimplifyJobs / Summer2027-Internships
+// repo, refreshed daily. (~12MB JSON; lives on the dev branch.) SimplifyJobs
+// starts a new repo each season — bump this URL when the next cycle begins.
 const FEED_URL =
-  "https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/.github/scripts/listings.json";
+  "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json";
 
 export async function fetchSwelistListings(): Promise<Listing[]> {
   const res = await fetch(FEED_URL, { cache: "no-store" });

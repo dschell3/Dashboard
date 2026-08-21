@@ -43,8 +43,8 @@ async function runImport() {
       const isRemote = l.locations.some((x) => x.toLowerCase().includes("remote"));
       // Feed seasons are usually bare ("Summer"); don't double a year if present.
       const season = l.season
-        ? (/\d{4}/.test(l.season) ? l.season : `${l.season} 2026`)
-        : "Summer 2026";
+        ? (/\d{4}/.test(l.season) ? l.season : `${l.season} 2027`)
+        : "Summer 2027";
 
       rows.push({
         external_id: l.externalId,

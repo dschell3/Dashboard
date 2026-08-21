@@ -33,6 +33,7 @@ describe("matchFocusCompany", () => {
 
 const baseProfile: Profile = {
   targetLocations: ["Sacramento", "Folsom"],
+  nearbyLocations: ["San Jose", "SF", "Foster City"],
   remoteOk: true,
   keywords: ["python", "sql", "backend", "software"],
   excludedKeywords: ["defense", "clearance", "bank", "police"],
@@ -75,6 +76,21 @@ describe("scoreListing", () => {
   it("gives no location points for far-away onsite roles", () => {
     const r = scoreListing({ ...baseListing, locations: ["Houston, TX"] }, baseProfile);
     expect(r.breakdown.location).toBe(0);
+  });
+
+  it("uses the nearby weight for Bay Area roles (below metro, above remote)", () => {
+    const r = scoreListing({ ...baseListing, locations: ["San Jose, CA"] }, baseProfile);
+    expect(r.breakdown.location).toBe(20);
+  });
+
+  it("metro beats nearby when a listing has both", () => {
+    const r = scoreListing({ ...baseListing, locations: ["San Jose, CA", "Folsom, CA"] }, baseProfile);
+    expect(r.breakdown.location).toBe(30);
+  });
+
+  it("matches location tokens whole-word: 'SF' hits 'SF' but not 'Pittsfield'", () => {
+    expect(scoreListing({ ...baseListing, locations: ["SF"] }, baseProfile).breakdown.location).toBe(20);
+    expect(scoreListing({ ...baseListing, locations: ["Pittsfield, MA"] }, baseProfile).breakdown.location).toBe(0);
   });
 
   it("caps keyword points", () => {

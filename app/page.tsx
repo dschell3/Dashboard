@@ -107,7 +107,7 @@ export default async function DashboardPage() {
       <Nav />
 
       <div className="mb-5 flex items-baseline justify-between">
-        <h1 className="text-lg font-medium">Summer 2026</h1>
+        <h1 className="text-lg font-medium">Summer 2027</h1>
         <span className="text-[13px] text-stone-500 dark:text-stone-400">{activeRoles} active roles</span>
       </div>
 

@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     title,
     locations: location ? [location] : [],
     sponsorship: null,
-    season: "Summer 2026",
+    season: "Summer 2027",
     datePosted: Math.floor(Date.now() / 1000),
     url: url || "",
     source: "manual",
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       // must not produce a row that is neither rolling nor dated.
       deadline_at: /^\d{4}-\d{2}-\d{2}$/.test(b.deadline || "") ? b.deadline : null,
       is_rolling: !/^\d{4}-\d{2}-\d{2}$/.test(b.deadline || ""),
-      season: "Summer 2026",
+      season: "Summer 2027",
       work_mode: /remote/i.test(location) ? "remote" : location ? "onsite" : null,
       date_posted: new Date().toISOString(),
       fit_score: fitScore,

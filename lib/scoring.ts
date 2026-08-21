@@ -17,6 +17,7 @@ export type Listing = {
 
 export type Profile = {
   targetLocations: string[];
+  nearbyLocations: string[]; // commutable/relocatable region (Bay Area) — scores below metro, above remote
   remoteOk: boolean;
   keywords: string[];
   excludedKeywords: string[];
@@ -32,7 +33,7 @@ export type ScoreResult = {
 };
 
 const DEFAULT_WEIGHTS: Record<string, number> = {
-  location: 30, remote: 18, focus: 25,
+  location: 30, nearby: 20, remote: 18, focus: 25,
   keyword_each: 6, keyword_cap: 24, role: 12,
   fresh_14d: 10, fresh_30d: 6,
 };
@@ -86,11 +87,14 @@ export function scoreListing(listing: Listing, profile: Profile): ScoreResult {
   const title = norm(listing.title);
   const locs = (listing.locations || []).map(norm);
 
-  // Location
+  // Location: home metro > nearby region (Bay Area) > remote. Whole-word city
+  // matching, so the "SF" token matches "SF" but never "Pittsfield".
   let loc = 0;
-  const metro = locs.some((l) => profile.targetLocations.some((t) => l.includes(norm(t))));
+  const inAny = (targets: string[]) =>
+    locs.some((l) => targets.some((t) => containsWordExact(l, t)));
   const remote = locs.some((l) => l.includes("remote"));
-  if (metro) loc = w.location;
+  if (inAny(profile.targetLocations)) loc = w.location;
+  else if (inAny(profile.nearbyLocations || [])) loc = w.nearby;
   else if (remote && profile.remoteOk) loc = w.remote;
   breakdown.location = loc;
 

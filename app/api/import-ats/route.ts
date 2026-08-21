@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient, upsertGrouped } from "@/lib/db";
 import { buildProfile } from "@/lib/profile";
-import { scoreListing, type Listing } from "@/lib/scoring";
+import { scoreListing, containsWordExact, type Listing, type Profile } from "@/lib/scoring";
 import { fetchCompanyListings, enrichListing, isPullable, pool, looksSenior, externalIdPrefix, type AtsCompany } from "@/lib/ats";
 import { safeUrl } from "@/lib/format";
 import { extractDeadline, stripHtml, plausibleDeadline } from "@/lib/deadline";
@@ -14,12 +14,14 @@ const THRESHOLD = 35;
 
 // Unlike the national swelist feed (where the fit threshold does the pruning),
 // focus companies score 25 points on the name alone — so without this gate an
-// HPE intern role in Houston would sneak in. Only metro or remote roles count.
-function isRelevant(l: Listing, targetLocations: string[], remoteOk: boolean) {
+// HPE intern role in Houston would sneak in. Metro, nearby-region (Bay Area),
+// or remote roles count.
+function isRelevant(l: Listing, profile: Profile) {
   const locs = l.locations.map((x) => x.toLowerCase());
-  const metro = locs.some((x) => targetLocations.some((t) => x.includes(t.toLowerCase())));
+  const near = locs.some((x) =>
+    [...profile.targetLocations, ...profile.nearbyLocations].some((t) => containsWordExact(x, t)));
   const remote = locs.some((x) => x.includes("remote"));
-  return metro || (remote && remoteOk);
+  return near || (remote && profile.remoteOk);
 }
 
 async function runImport() {
@@ -54,7 +56,7 @@ async function runImport() {
           // Full-board scans surface senior roles that focus+location points
           // alone would push past the threshold — drop them by title.
           if (looksSenior(l.title)) continue;
-          if (!isRelevant(l, profile.targetLocations, profile.remoteOk)) continue;
+          if (!isRelevant(l, profile)) continue;
           const { fitScore, eligibility, breakdown } = scoreListing(l, profile);
           if (fitScore < THRESHOLD || eligibility === "blocked") continue;
           kept++;
@@ -81,7 +83,7 @@ async function runImport() {
             company_id: c.id,
             title: (l.title || "").slice(0, 300),
             role_type: "internship",
-            season: "Summer 2026",
+            season: "Summer 2027",
             locations: (l.locations || []).slice(0, 10).map((x) => String(x).slice(0, 120)),
             work_mode: isRemote ? "remote" : l.locations.length ? "onsite" : null,
             source: "ats",
