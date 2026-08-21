@@ -9,7 +9,7 @@ import { Chip } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
 type SortKey = "fit" | "deadline" | "company" | "posted";
-const STATUSES: OppStatus[] = ["interested", "preparing", "applied", "interview", "offer", "accepted", "rejected", "withdrawn", "closed"];
+const STATUSES: OppStatus[] = ["interested", "preparing", "applied", "interview", "offer", "accepted", "rejected", "withdrawn", "closed", "not_relevant"];
 
 function deadlineRank(o: Opportunity) {
   if (o.deadline_at) return (new Date(o.deadline_at + "T00:00:00").getTime() - Date.now()) / 86400000;
@@ -81,6 +81,13 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     });
     const postedRank = (o: Opportunity) => (o.date_posted ? new Date(o.date_posted).getTime() : -Infinity);
     out.sort((a, b) => {
+      // Not-relevant marks sink to the end under every sort — marking a row
+      // drops it to the bottom immediately (optimistic update re-sorts), and
+      // it stays there. It's a durable de-prioritization: deleting an
+      // imported row just resurrects it on the next feed pull, but imports
+      // never overwrite a user-set status.
+      const sink = Number(a.status === "not_relevant") - Number(b.status === "not_relevant");
+      if (sink !== 0) return sink;
       if (sort === "fit") return (b.fit_score || 0) - (a.fit_score || 0);
       if (sort === "deadline") return deadlineRank(a) - deadlineRank(b);
       if (sort === "posted") return postedRank(b) - postedRank(a); // newest first, undated last
@@ -337,7 +344,7 @@ function Row({ o, onStatus, onDelete, isSelected, onSelect }: {
 }) {
   const win = windowInfo(o);
   const dot = o.eligibility_flag === "review" ? "bg-amber-500" : "bg-emerald-500";
-  const done = ["rejected", "withdrawn", "closed"].includes(o.status);
+  const done = ["rejected", "withdrawn", "closed", "not_relevant"].includes(o.status);
   // Ctrl/cmd- and shift-clicks anywhere on the row (outside its controls)
   // select instead of doing nothing — file-manager style.
   function rowClick(e: React.MouseEvent) {

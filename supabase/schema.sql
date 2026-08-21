@@ -46,7 +46,7 @@ create table if not exists opportunities (
   window_opens_at date,
   deadline_at date,
   is_rolling boolean default true,
-  status text default 'interested',      -- interested | preparing | applied | interview | offer | rejected | withdrawn | closed
+  status text default 'interested',      -- interested | preparing | applied | interview | offer | accepted | rejected | withdrawn | closed | not_relevant
   priority text,
   fit_score int default 0,
   fit_breakdown jsonb,

@@ -75,5 +75,7 @@ export function sourceLabel(s: string | null) {
 }
 
 export function statusLabel(s: string) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+  if (!s) return "";
+  const t = s.replace(/_/g, " "); // "not_relevant" -> "Not relevant"
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }

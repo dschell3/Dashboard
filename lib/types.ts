@@ -1,7 +1,7 @@
 export type EligibilityFlag = "clear" | "review" | "blocked";
 export type OppStatus =
   | "interested" | "preparing" | "applied" | "interview"
-  | "offer" | "accepted" | "rejected" | "withdrawn" | "closed";
+  | "offer" | "accepted" | "rejected" | "withdrawn" | "closed" | "not_relevant";
 
 export type Opportunity = {
   id: string;
