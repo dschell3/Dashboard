@@ -11,6 +11,7 @@ export type Listing = {
   datePosted: number | null; // unix seconds
   url: string;
   source: string;
+  roleType?: "internship" | "new-grad" | null; // which feed/board the listing came from
   description?: string | null; // posting text when the board API includes it
   detailRef?: string | null;   // id/path for a per-posting detail fetch
 };
@@ -108,8 +109,11 @@ export function scoreListing(listing: Listing, profile: Profile): ScoreResult {
   kw = Math.min(kw, w.keyword_cap);
   breakdown.keywords = kw;
 
-  // Role type
-  const role = (title.includes("intern") || title.includes("co-op") || title.includes("coop")) ? w.role : 0;
+  // Role type: intern/co-op titles, entry-level-shaped titles, and anything
+  // from the curated new-grad feed all count as target roles.
+  const NEW_GRAD_TITLE = /\bnew ?grad(uate)?\b|\bentry[- ]level\b|\bearly career\b|\bjunior\b/;
+  const internish = title.includes("intern") || title.includes("co-op") || title.includes("coop");
+  const role = internish || listing.roleType === "new-grad" || NEW_GRAD_TITLE.test(title) ? w.role : 0;
   breakdown.role = role;
 
   // Freshness
