@@ -101,6 +101,24 @@ describe("scoreListing", () => {
     expect(r.breakdown.keywords).toBe(24); // 4 hits x 6 = 24, at the cap
   });
 
+  it("gives role points to new-grad feed listings without intern titles", () => {
+    const r = scoreListing(
+      { ...baseListing, title: "Software Engineer", roleType: "new-grad" },
+      baseProfile
+    );
+    expect(r.breakdown.role).toBe(12);
+  });
+
+  it("gives role points to entry-level-shaped titles from any source", () => {
+    const r = scoreListing({ ...baseListing, title: "Junior Software Engineer" }, baseProfile);
+    expect(r.breakdown.role).toBe(12);
+  });
+
+  it("gives no role points to untagged non-intern titles", () => {
+    const r = scoreListing({ ...baseListing, title: "Software Engineer" }, baseProfile);
+    expect(r.breakdown.role).toBe(0);
+  });
+
   it("honors custom weights from preferences", () => {
     const r = scoreListing(baseListing, { ...baseProfile, weights: { location: 40 } });
     expect(r.breakdown.location).toBe(40);

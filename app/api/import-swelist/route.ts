@@ -3,6 +3,7 @@ import { createServerClient, upsertGrouped } from "@/lib/db";
 import { fetchSwelistListings } from "@/lib/swelist";
 import { buildProfile } from "@/lib/profile";
 import { scoreListing, matchFocusCompany } from "@/lib/scoring";
+import { looksSenior } from "@/lib/ats";
 import { safeUrl } from "@/lib/format";
 import { safeEqual } from "@/lib/gate";
 
@@ -33,6 +34,12 @@ async function runImport() {
 
     const rows: any[] = [];
     for (const l of listings) {
+      const isNewGrad = l.roleType === "new-grad";
+      // The new-grad feed is curated but broader than the internships one —
+      // keep seniority-marked titles (Staff/Principal/Manager/etc.) out of a
+      // feed meant for entry-level roles. Intern titles are exempt: an
+      // internship called "Product Manager Intern" is still an internship.
+      if (isNewGrad && looksSenior(l.title)) continue;
       const { fitScore, eligibility, breakdown } = scoreListing(l, profile);
       if (fitScore < THRESHOLD) continue;
       // Excluded-sector roles are never stored: they'd be hidden everywhere
@@ -41,7 +48,9 @@ async function runImport() {
 
       const matchKey = matchFocusCompany(l.company, companyKeys);
       const isRemote = l.locations.some((x) => x.toLowerCase().includes("remote"));
-      // Feed seasons are usually bare ("Summer"); don't double a year if present.
+      // Feed seasons are usually bare ("Summer"); don't double a year if
+      // present. New-grad roles are season-less (start ASAP), so the column
+      // is omitted — existing rows keep whatever they have.
       const season = l.season
         ? (/\d{4}/.test(l.season) ? l.season : `${l.season} 2027`)
         : "Summer 2027";
@@ -51,8 +60,8 @@ async function runImport() {
         company_name_raw: (l.company || "").slice(0, 200),
         company_id: matchKey ? companyIdByName[matchKey] : null,
         title: (l.title || "").slice(0, 300),
-        role_type: "internship",
-        season,
+        role_type: isNewGrad ? "new-grad" : "internship",
+        ...(isNewGrad ? {} : { season }),
         locations: (l.locations || []).slice(0, 10).map((x) => String(x).slice(0, 120)),
         work_mode: isRemote ? "remote" : l.locations.length ? "onsite" : null,
         source: "swelist",

@@ -10,6 +10,13 @@ import { toast } from "@/components/Toaster";
 
 type SortKey = "fit" | "deadline" | "company" | "posted";
 const STATUSES: OppStatus[] = ["interested", "preparing", "applied", "interview", "offer", "accepted", "rejected", "withdrawn", "closed", "not_relevant"];
+// Rows predating the new-grad feed have role_type 'internship' (column
+// default), so a null reads as internship.
+const ROLE_TYPES = [
+  { value: "internship", label: "Internships" },
+  { value: "new-grad", label: "New grad" },
+  { value: "co-op", label: "Co-op" },
+];
 
 function deadlineRank(o: Opportunity) {
   if (o.deadline_at) return (new Date(o.deadline_at + "T00:00:00").getTime() - Date.now()) / 86400000;
@@ -29,6 +36,7 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
   const [opps, setOpps] = useState(initial);
   const [q, setQ] = useState(sp.get("q") || "");
   const [status, setStatus] = useState(sp.get("status") || "all");
+  const [rtype, setRtype] = useState(sp.get("type") || "all");
   const [source, setSource] = useState(sp.get("source") || "all");
   const [elig, setElig] = useState(sp.get("elig") || "all");
   const [focusOnly, setFocusOnly] = useState(sp.get("focus") === "1");
@@ -61,19 +69,21 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
     const p = new URLSearchParams();
     if (q) p.set("q", q);
     if (status !== "all") p.set("status", status);
+    if (rtype !== "all") p.set("type", rtype);
     if (source !== "all") p.set("source", source);
     if (elig !== "all") p.set("elig", elig);
     if (focusOnly) p.set("focus", "1");
     if (sort !== "fit") p.set("sort", sort);
     const qs = p.toString();
     window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
-  }, [q, status, source, elig, focusOnly, sort]);
+  }, [q, status, rtype, source, elig, focusOnly, sort]);
 
   const rows = useMemo(() => {
     const out = opps.filter((o) => {
       const hay = `${o.company_name_raw || ""} ${o.title} ${(o.locations || []).join(" ")}`.toLowerCase();
       if (q && !hay.includes(q.toLowerCase().trim())) return false;
       if (status !== "all" && o.status !== status) return false;
+      if (rtype !== "all" && (o.role_type || "internship") !== rtype) return false;
       if (source !== "all" && (o.source || "manual") !== source) return false;
       if (elig !== "all" && (o.eligibility_flag || "clear") !== elig) return false;
       if (focusOnly && !o.company_id) return false;
@@ -94,7 +104,7 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
       return (a.company_name_raw || "").localeCompare(b.company_name_raw || "");
     });
     return out;
-  }, [opps, q, status, source, elig, focusOnly, sort]);
+  }, [opps, q, status, rtype, source, elig, focusOnly, sort]);
 
   async function setOppStatus(id: string, next: OppStatus) {
     const prev = opps;
@@ -196,6 +206,10 @@ export default function OpportunitiesTable({ initial }: { initial: Opportunity[]
         <select value={status} onChange={(e) => setStatus(e.target.value)} className={sel} aria-label="Filter by status">
           <option value="all">All statuses</option>
           {STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
+        </select>
+        <select value={rtype} onChange={(e) => setRtype(e.target.value)} className={sel} aria-label="Filter by role type">
+          <option value="all">All types</option>
+          {ROLE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
         <select value={source} onChange={(e) => setSource(e.target.value)} className={sel} aria-label="Filter by source">
           <option value="all">All sources</option>
@@ -390,7 +404,11 @@ function Row({ o, onStatus, onDelete, isSelected, onSelect }: {
                 </a>
               )}
             </div>
-            <div className="truncate text-xs text-stone-500 dark:text-stone-400">{o.title} · {sourceLabel(o.source)}</div>
+            <div className="truncate text-xs text-stone-500 dark:text-stone-400">
+              {o.title} · {sourceLabel(o.source)}
+              {o.role_type === "new-grad" && <span className="text-blue-600 dark:text-blue-400"> · new grad</span>}
+              {o.role_type === "co-op" && <span className="text-blue-600 dark:text-blue-400"> · co-op</span>}
+            </div>
           </div>
         </div>
       </td>

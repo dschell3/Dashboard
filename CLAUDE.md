@@ -6,10 +6,12 @@ Vercel with cron jobs. Repo: `dschell3/Dashboard`, auto-deploys `main`.
 
 ## Functional requirements (source of truth)
 
-**Purpose:** track Summer 2027 internship opportunities, score them by fit,
-flag eligibility, pull live postings automatically, and surface deadlines.
-(Pivoted from Summer 2026 in Aug 2026 — SimplifyJobs starts a new repo each
-season, so the swelist feed URL gets bumped per cycle.)
+**Purpose:** track Summer 2027 internship opportunities AND full-time
+entry-level (new-grad) roles — the user graduates within a year — score them
+by fit, flag eligibility, pull live postings automatically, and surface
+deadlines. (Pivoted from Summer 2026 in Aug 2026; opened to new-grad roles
+Nov 2026. SimplifyJobs starts a new internships repo each season, so that
+feed URL gets bumped per cycle; the New-Grad-Positions repo is season-less.)
 
 - **Fit scoring** (`lib/scoring.ts`): rule-based, transparent, weights stored in
   `preferences.scoring_weights`. Every stored score keeps its breakdown
@@ -17,8 +19,10 @@ season, so the swelist feed URL gets bumped per cycle.)
   location (30), nearby region (20 — Bay Area, `preferences.nearby_locations`
   with a code fallback in `lib/profile.ts`; below metro, above remote by
   design so Sacramento still ranks first), remote (18), focus-company match
-  (25), title keywords (6 each, cap 24), intern/co-op role (12), freshness
-  (10/6). Import threshold 35. Location tokens match whole-word
+  (25), title keywords (6 each, cap 24), target role (12 — intern/co-op
+  titles, entry-level-shaped titles like "Junior"/"New Grad"/"Entry Level",
+  or anything tagged `roleType: "new-grad"` by the curated new-grad feed),
+  freshness (10/6). Import threshold 35. Location tokens match whole-word
   (`containsWordExact`) so the "SF" token can't hit "Pittsfield".
 - **Eligibility is separate from fit** and is a core requirement, not
   decoration. The user's search excludes sectors with strict background-check
@@ -36,7 +40,15 @@ season, so the swelist feed URL gets bumped per cycle.)
   Unit tests in `lib/scoring.test.ts` pin the behavior.
 - **Imports** (three sources, all upsert on `external_id`, all preserve
   user-set state):
-  - swelist feed (`/api/import-swelist`): SimplifyJobs Summer2027 JSON.
+  - swelist feed (`/api/import-swelist`): two SimplifyJobs JSON feeds —
+    Summer2027-Internships (`role_type: "internship"`) and New-Grad-Positions
+    (`role_type: "new-grad"`). One feed failing doesn't sink the other
+    (`Promise.allSettled`). New-grad listings are senior-screened with
+    `looksSenior` (intern titles are exempt — "Product Manager Intern" is
+    still an internship) and imported without `season` (they start ASAP).
+    The opportunities table filters by role type ("All types / Internships /
+    New grad / Co-op", URL param `type`); non-internship rows carry a small
+    role tag in the title line.
   - Per-company ATS pulls (`/api/import-ats`, `lib/ats.ts`): Ashby (Inductive
     Automation, Scribd, Instructure/Parchment), SmartRecruiters (Solidigm),
     Workday (HPE, Micron, VSP). Config lives in `companies.ats_type` +
